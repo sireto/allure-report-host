@@ -1,14 +1,9 @@
 use axum::{
-    extract::Request,
-    http::{StatusCode, HeaderMap},
-    middleware::{self, Next},
-    response::Response,
-    routing::get,
-    Router,
+    Router, extract::{DefaultBodyLimit, Request}, http::{HeaderMap, StatusCode}, middleware::{self, Next}, response::Response, routing::get
 };
-use std::net::SocketAddr;
-use std::env;
 use dotenvy::dotenv;
+use std::env;
+use std::net::SocketAddr;
 use utoipa::{
     openapi::security::{ApiKey, ApiKeyValue, SecurityScheme},
     OpenApi,
@@ -17,9 +12,16 @@ use utoipa_swagger_ui::SwaggerUi;
 
 #[derive(OpenApi)]
 #[openapi(
-    paths(root),
+    paths(
+        root,
+        api::handlers::report_handler::upload_report
+    ),
     components(
-        schemas()
+        schemas(
+            api::models::report::CreateReportRequest,
+            api::models::report::ReportResponse,
+            api::models::report::ReportType
+        )
     ),
     modifiers(&SecurityAddon),
     info(title = "Allure Report Host API", version = "0.1.0")
@@ -43,19 +45,20 @@ impl utoipa::Modify for SecurityAddon {
 async fn main() {
     dotenv().ok();
 
-    if env::var("API_KEY").is_err() {
-        panic!("CRITICAL ERROR: API_KEY environment variable is not set.");
+    if env::var("API_KEY").is_err() || env::var("API_KEY").unwrap().is_empty() {
+        panic!("CRITICAL ERROR: API_KEY environment variable is not set or is empty.");
     }
 
-    // initialize tracing
     tracing_subscriber::fmt::init();
 
     let api_routes = Router::new()
-        .route("/", get(root))
-        .route_layer(middleware::from_fn(auth));
+        .nest("/api", api::route::create_api_router()) 
+        .route_layer(middleware::from_fn(auth))
+        .layer(DefaultBodyLimit::max(10 * 1024 * 1024));
 
     let app = Router::new()
         .merge(SwaggerUi::new("/swagger-ui").url("/api-docs/openapi.json", ApiDoc::openapi()))
+        .route("/", get(root))
         .merge(api_routes);
 
     let addr = SocketAddr::from(([0, 0, 0, 0], 8088));
@@ -68,7 +71,7 @@ async fn auth(headers: HeaderMap, request: Request, next: Next) -> Result<Respon
     let api_key = env::var("API_KEY").expect("API_KEY must be set");
 
     match headers.get("x-api-key") {
-        Some(key) if key == api_key.as_str() => Ok(next.run(request).await),
+        Some(key) if key.to_str().unwrap_or_default() == api_key => Ok(next.run(request).await),
         _ => Err(StatusCode::UNAUTHORIZED),
     }
 }
