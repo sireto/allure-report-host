@@ -54,7 +54,7 @@ async fn main() {
     let api_routes = Router::new()
         .nest("/api", api::route::create_api_router()) 
         .route_layer(middleware::from_fn(auth))
-        .layer(DefaultBodyLimit::max(10 * 1024 * 1024));
+        .layer(DefaultBodyLimit::max(50 * 1024 * 1024));
 
     let app = Router::new()
         .merge(SwaggerUi::new("/swagger-ui").url("/api-docs/openapi.json", ApiDoc::openapi()))

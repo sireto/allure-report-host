@@ -18,4 +18,9 @@ pub mod services {
     pub mod report_service;
 }
 
+pub mod helpers {
+    #[path = "allure_config.rs"]
+    pub mod allure_config;
+}
+
 pub mod route;
