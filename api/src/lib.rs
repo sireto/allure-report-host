@@ -21,6 +21,15 @@ pub mod services {
 pub mod helpers {
     #[path = "allure_config.rs"]
     pub mod allure_config;
+
+    #[path = "fs_helper.rs"]
+    pub mod fs_helper;
+
+    #[path = "zip_helper.rs"]
+    pub mod zip_helper;
+
+    #[path = "allure_generator.rs"]
+    pub mod allure_generator;
 }
 
 pub mod route;
