@@ -12,6 +12,9 @@ use crate::helpers::allure_generator::{collect_history, generate_report, sync_hi
 use crate::helpers::fs_helper::{find_results_dir, next_sequential_id, move_directory_contents};
 use crate::helpers::zip_helper::extract_zip;
 
+const MAX_ZIP_SIZE_BYTES: u64 = 500 * 1024 * 1024; // 500MB
+const MAX_ZIP_SIZE_MB: u64 = MAX_ZIP_SIZE_BYTES / (1024 * 1024);
+
 pub async fn upload_report(
     mut multipart: Multipart,
 ) -> impl IntoResponse {
@@ -20,6 +23,7 @@ pub async fn upload_report(
     let mut report_name: Option<String> = None;
     let mut report_type: String = "allure".to_string();
     let mut zip_data: Option<Vec<u8>> = None;
+    let mut zip_size: u64 = 0;
 
     let base_path = env::var("DATA_DIR").unwrap_or_else(|_| "../data".to_string());
 
@@ -52,8 +56,40 @@ pub async fn upload_report(
                 if let Some(file_name) = field.file_name() {
                     if field_name == "file" || file_name.ends_with(".zip") {
                         match field.bytes().await {
-                            Ok(data) => { zip_data = Some(data.to_vec()); }
-                            Err(e) => { eprintln!("Failed to read file bytes: {}", e); }
+                            Ok(data) => {
+                                zip_size = data.len() as u64;
+                                
+                                // Check file size before storing
+                                if zip_size > MAX_ZIP_SIZE_BYTES {
+                                    let size_mb = zip_size / (1024 * 1024);
+                                    return (
+                                        StatusCode::PAYLOAD_TOO_LARGE,
+                                        Json(json!({
+                                            "error": format!(
+                                                "ZIP file size exceeds maximum limit of {}MB (received: {}MB)",
+                                                MAX_ZIP_SIZE_MB, size_mb
+                                            ),
+                                            "max_size_bytes": MAX_ZIP_SIZE_BYTES,
+                                            "max_size_mb": MAX_ZIP_SIZE_MB,
+                                            "received_bytes": zip_size,
+                                            "received_mb": size_mb,
+                                            "field": "file"
+                                        }))
+                                    ).into_response();
+                                }
+                                
+                                zip_data = Some(data.to_vec());
+                            }
+                            Err(e) => {
+                                eprintln!("Failed to read file bytes: {}", e);
+                                return (
+                                    StatusCode::BAD_REQUEST,
+                                    Json(json!({
+                                        "error": format!("Failed to read uploaded file: {}", e),
+                                        "field": "file"
+                                    }))
+                                ).into_response();
+                            }
                         }
                     }
                 }

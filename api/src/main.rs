@@ -1,7 +1,8 @@
 use axum::{
-    Router, extract::{DefaultBodyLimit, Request}, http::{HeaderMap, StatusCode}, middleware::{self, Next}, response::Response, routing::get
+    Json, Router, extract::{DefaultBodyLimit, Request}, http::{HeaderMap, StatusCode}, middleware::{self, Next}, response::Response
 };
 use dotenvy::dotenv;
+use serde_json::json;
 use std::env;
 use std::net::SocketAddr;
 use tower_http::services::ServeDir;
@@ -42,6 +43,9 @@ impl utoipa::Modify for SecurityAddon {
     }
 }
 
+const MAX_UPLOAD_SIZE_BYTES: usize = 500 * 1024 * 1024; // 500MB
+const MAX_UPLOAD_SIZE_MB: usize = MAX_UPLOAD_SIZE_BYTES / (1024 * 1024);
+
 #[tokio::main]
 async fn main() {
     dotenv().ok();
@@ -57,7 +61,8 @@ async fn main() {
     let api_routes = Router::new()
         .nest("/api", api::route::create_api_router()) 
         .route_layer(middleware::from_fn(auth))
-        .layer(DefaultBodyLimit::max(400 * 1024 * 1024));
+        .layer(middleware::from_fn(check_content_length))
+        .layer(DefaultBodyLimit::max(MAX_UPLOAD_SIZE_BYTES));
 
     let static_reports = Router::new()
         .nest_service("/", ServeDir::new(&data_dir));
@@ -69,8 +74,39 @@ async fn main() {
 
     let addr = SocketAddr::from(([0, 0, 0, 0], 8088));
     println!("Listening on {}", addr);
+    println!("Max upload size: {}MB", MAX_UPLOAD_SIZE_MB);
     let listener = tokio::net::TcpListener::bind(addr).await.unwrap();
     axum::serve(listener, app).await.unwrap();
+}
+
+/// Middleware to check Content-Length before processing the request
+async fn check_content_length(
+    headers: HeaderMap,
+    request: Request,
+    next: Next,
+) -> Result<Response, (StatusCode, Json<serde_json::Value>)> {
+    if let Some(content_length) = headers.get("content-length") {
+        if let Ok(length_str) = content_length.to_str() {
+            if let Ok(length) = length_str.parse::<u64>() {
+                if length > MAX_UPLOAD_SIZE_BYTES as u64 {
+                    let size_mb = length / (1024 * 1024);
+                    let error_response = json!({
+                        "error": format!(
+                            "File size exceeds maximum limit of {}MB (received: {}MB)",
+                            MAX_UPLOAD_SIZE_MB, size_mb
+                        ),
+                        "max_size_bytes": MAX_UPLOAD_SIZE_BYTES,
+                        "max_size_mb": MAX_UPLOAD_SIZE_MB,
+                        "received_bytes": length,
+                        "received_mb": size_mb
+                    });
+                    return Err((StatusCode::PAYLOAD_TOO_LARGE, Json(error_response)));
+                }
+            }
+        }
+    }
+
+    Ok(next.run(request).await)
 }
 
 async fn auth(headers: HeaderMap, request: Request, next: Next) -> Result<Response, StatusCode> {

@@ -7,24 +7,12 @@ set -euo pipefail
 # Configuration
 : "${REPORT_API_URL:=}"
 : "${REPORT_API_KEY:=}"
+: "${MAX_FILE_SIZE_MB:=500}"
 
 usage() {
     cat <<EOF
 Usage: ./scripts/publish-report.sh [options] [project] [branch] [report_name] [type] [path]
-
-Arguments:
-  project       Project name (default: current directory name)
-  branch        Git branch (default: current git branch or 'local')
-  report_name   Report name (default: auto-generated from date/git commit)
-  type          Report type: 'allure' or 'raw' (default: allure)
-  path          Path to report folder or .zip file (default: ./allure-results)
-
-Options:
-  --url URL     API endpoint URL
-  --key KEY     API key for authentication
-  --dry-run     Show what would be executed without uploading
-  --verbose,-v  Show verbose curl output
-  --help,-h     Show this help message
+...
 EOF
 }
 
@@ -42,20 +30,18 @@ while [[ $# -gt 0 ]]; do
     esac
 done
 
-# Parameter assignments
 project_name="${1:-$(basename "$(pwd)")}"
 branch="${2:-$(git rev-parse --abbrev-ref HEAD 2>/dev/null || echo 'local')}"
 report_name="${3:-$(date +'%Y-%m-%d-%H%M')-$(git rev-parse --short HEAD 2>/dev/null || echo '')}"
 report_type="${4:-allure}"
 input_path="${5:-./allure-results}"
 
-# Validate type
 if [[ "$report_type" != "allure" && "$report_type" != "raw" ]]; then
     echo "Error: type must be 'allure' or 'raw'" >&2
     exit 1
 fi
 
-# Prepare file to upload
+# Prepare file
 if [[ -d "$input_path" ]]; then
     temp_zip="/tmp/report-$(date +%s).zip"
     echo "→ Zipping folder $input_path ..."
@@ -69,9 +55,24 @@ else
     exit 1
 fi
 
-# Build curl command
+# File size check
+file_size_bytes=$(stat -f%z "$upload_file" 2>/dev/null || stat -c%s "$upload_file" 2>/dev/null || echo "0")
+file_size_mb=$((file_size_bytes / 1024 / 1024))
+
+echo "→ File size: ${file_size_mb}MB (limit: ${MAX_FILE_SIZE_MB}MB)"
+
+if (( file_size_mb > MAX_FILE_SIZE_MB )); then
+    echo "Error: File too large (${file_size_mb}MB > ${MAX_FILE_SIZE_MB}MB)" >&2
+    [[ "$upload_file" == /tmp/report-* ]] && rm -f "$upload_file"
+    exit 1
+fi
+
+if [[ -z "$REPORT_API_URL" ]]; then
+    echo "Error: REPORT_API_URL not set. Use --url or env var" >&2
+    exit 1
+fi
+
 curl_args=(
-    curl
     -X POST "$REPORT_API_URL"
     -F "project_name=$project_name"
     -F "branch=$branch"
@@ -84,7 +85,7 @@ curl_args=(
 [[ -n "$REPORT_API_KEY" ]] && curl_args+=(-H "X-API-Key: $REPORT_API_KEY")
 [[ $verbose -eq 1 ]] && curl_args+=(-v)
 
-# Show summary
+# Summary
 echo "Publishing report:"
 echo "  URL:           $REPORT_API_URL"
 echo "  Project:       $project_name"
@@ -93,25 +94,37 @@ echo "  Report name:   $report_name"
 echo "  Type:          $report_type"
 echo "  File:          $upload_file ($(du -h "$upload_file" | cut -f1))"
 
-# Execute upload
 echo "→ Starting upload..."
 
-if [[ $dry_run -eq 1 ]]; then
-    echo -e "\nDRY RUN MODE — would execute:"
-    printf '  %q ' "${curl_args[@]}"
-    echo -e " -w '\\n→ HTTP %{http_code}\\n' -o /dev/null\n"
-    exit 0
+response=$(mktemp)
+trap 'rm -f "$response"' EXIT
+
+# Capture ONLY the status code
+http_code=$(curl "${curl_args[@]}" \
+    -o "$response" \
+    -w '%{http_code}' \
+    -s -S --fail-with-body) || true   # don't exit on non-2xx
+
+# Clean http_code (remove any whitespace/newlines)
+http_code="${http_code//[[:space:]]/}"
+
+if [[ -z "$http_code" || ! "$http_code" =~ ^[0-9]{3}$ ]]; then
+    echo "Error: Could not capture valid HTTP code" >&2
+    cat "$response" >&2
+    exit 1
 fi
 
-# Add the remaining flags directly to the array (safest)
-curl_args+=(
-    -w "\n→ HTTP %{http_code}\n"
-    -o /dev/null
-)
-
-if "${curl_args[@]}"; then
-    echo -e "\n→ Upload successful"
+if (( http_code >= 200 && http_code < 300 )); then
+    echo -e "\n→ Upload successful! (HTTP $http_code)"
+    if [[ -s "$response" ]]; then
+        echo "→ Response:"
+        jq . "$response" 2>/dev/null || cat "$response"
+    fi
 else
-    echo -e "\n→ Upload failed (HTTP code above or network error)" >&2
+    echo -e "\n→ Upload failed (HTTP $http_code)" >&2
+    if [[ -s "$response" ]]; then
+        echo "→ Error details:"
+        jq . "$response" 2>/dev/null || cat "$response"
+    fi
     exit 1
 fi
