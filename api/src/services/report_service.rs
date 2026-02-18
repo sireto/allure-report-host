@@ -16,6 +16,7 @@ pub async fn upload_report(
     mut multipart: Multipart,
 ) -> impl IntoResponse {
     let mut project_name: Option<String> = None;
+    let mut branch: Option<String> = None;
     let mut report_name: Option<String> = None;
     let mut report_type: String = "allure".to_string();
     let mut zip_data: Option<Vec<u8>> = None;
@@ -30,6 +31,11 @@ pub async fn upload_report(
             "project_name" => {
                 if let Ok(val) = field.text().await {
                     if !val.is_empty() { project_name = Some(val); }
+                }
+            }
+            "branch" => {
+                if let Ok(val) = field.text().await {
+                    if !val.is_empty() { branch = Some(val); }
                 }
             }
             "report_name" => {
@@ -56,9 +62,9 @@ pub async fn upload_report(
     }
 
     // Validate required fields
-    if project_name.is_none() || report_name.is_none() {
+    if project_name.is_none() || report_name.is_none() || branch.is_none() {
         return (StatusCode::BAD_REQUEST, Json(json!({
-            "error": "Missing required metadata fields (project_name, report_name)."
+            "error": "Missing required metadata fields (project_name, report_name, branch)."
         }))).into_response();
     }
     if zip_data.is_none() {
@@ -69,10 +75,9 @@ pub async fn upload_report(
 
     // Build directory paths
     let mut parent_dir = PathBuf::from(&base_path);
-    parent_dir.push("reports");
     parent_dir.push(project_name.as_ref().unwrap());
+    parent_dir.push(branch.as_ref().unwrap());
     parent_dir.push(report_name.as_ref().unwrap());
-
     if let Err(e) = tokio::fs::create_dir_all(&parent_dir).await {
         return (StatusCode::INTERNAL_SERVER_ERROR, Json(json!({
             "error": format!("Failed to create parent directory: {}", e)
@@ -176,6 +181,7 @@ pub async fn upload_report(
         Json(json!({
             "message": format!("Report uploaded successfully (Type: {})", report_type),
             "project_name": project_name,
+            "branch": branch,
             "report_name": report_name,
             "report_id": report_id,
             "url": format!("/reports/{}/{}/{}/index.html",

@@ -10,8 +10,21 @@ set -euo pipefail
 
 usage() {
     cat <<EOF
-Usage: ./scripts/publish-report.sh [options] [project] [report_name] [type] [path]
-...
+Usage: ./scripts/publish-report.sh [options] [project] [branch] [report_name] [type] [path]
+
+Arguments:
+  project       Project name (default: current directory name)
+  branch        Git branch (default: current git branch or 'local')
+  report_name   Report name (default: auto-generated from date/git commit)
+  type          Report type: 'allure' or 'raw' (default: allure)
+  path          Path to report folder or .zip file (default: ./allure-results)
+
+Options:
+  --url URL     API endpoint URL
+  --key KEY     API key for authentication
+  --dry-run     Show what would be executed without uploading
+  --verbose,-v  Show verbose curl output
+  --help,-h     Show this help message
 EOF
 }
 
@@ -29,11 +42,12 @@ while [[ $# -gt 0 ]]; do
     esac
 done
 
-# Fixed variable assignments
+# Parameter assignments
 project_name="${1:-$(basename "$(pwd)")}"
-report_name="${2:-$(date +'%Y-%m-%d-%H%M')-$(git rev-parse --abbrev-ref HEAD 2>/dev/null || echo 'local')-$(git rev-parse --short HEAD 2>/dev/null || echo '')}"
-report_type="${3:-allure}"
-input_path="${4:-./allure-results}"
+branch="${2:-$(git rev-parse --abbrev-ref HEAD 2>/dev/null || echo 'local')}"
+report_name="${3:-$(date +'%Y-%m-%d-%H%M')-$(git rev-parse --short HEAD 2>/dev/null || echo '')}"
+report_type="${4:-allure}"
+input_path="${5:-./allure-results}"
 
 # Validate type
 if [[ "$report_type" != "allure" && "$report_type" != "raw" ]]; then
@@ -60,6 +74,7 @@ curl_args=(
     curl
     -X POST "$REPORT_API_URL"
     -F "project_name=$project_name"
+    -F "branch=$branch"
     -F "report_name=$report_name"
     -F "type=$report_type"
     -F "file=@$upload_file"
@@ -71,11 +86,12 @@ curl_args=(
 
 # Show summary
 echo "Publishing report:"
-echo "  URL:          $REPORT_API_URL"
-echo "  Project:      $project_name"
-echo "  Report name:  $report_name"
-echo "  Type:         $report_type"
-echo "  File:         $upload_file ($(du -h "$upload_file" | cut -f1))"
+echo "  URL:           $REPORT_API_URL"
+echo "  Project:       $project_name"
+echo "  Branch:        $branch"
+echo "  Report name:   $report_name"
+echo "  Type:          $report_type"
+echo "  File:          $upload_file ($(du -h "$upload_file" | cut -f1))"
 
 # Execute upload
 echo "→ Starting upload..."

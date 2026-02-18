@@ -9,6 +9,8 @@ use crate::services::report_service;
 pub struct FileUploadRequest {
     #[schema(example = "my-project")]
     project_name: String,
+    #[schema(example = "qa")]
+    branch: String,
     #[schema(example = "daily-test")]
     report_name: String,
     #[schema(default = "allure", example = "allure")]

@@ -53,7 +53,6 @@ async fn main() {
     tracing_subscriber::fmt::init();
 
     let data_dir = env::var("DATA_DIR").unwrap_or_else(|_| "../data".to_string());
-    let reports_path = format!("{}/reports", data_dir);
 
     let api_routes = Router::new()
         .nest("/api", api::route::create_api_router()) 
@@ -61,11 +60,10 @@ async fn main() {
         .layer(DefaultBodyLimit::max(400 * 1024 * 1024));
 
     let static_reports = Router::new()
-        .nest_service("/reports", ServeDir::new(&reports_path));
+        .nest_service("/", ServeDir::new(&data_dir));
 
     let app = Router::new()
         .merge(SwaggerUi::new("/swagger-ui").url("/api-docs/openapi.json", ApiDoc::openapi()))
-        .route("/", get(root))
         .merge(api_routes)
         .merge(static_reports);
 
