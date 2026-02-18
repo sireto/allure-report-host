@@ -138,3 +138,21 @@ pub fn validate_path_segment(input: &str, field: &str) -> Result<String, String>
 
     Ok(trimmed.to_string())
 }
+
+/// Atomically allocates the next sequential ID by creating the directory.
+/// Retries on conflict to avoid race conditions.
+pub async fn allocate_next_id_dir(parent_dir: &PathBuf) -> Result<(u32, PathBuf), String> {
+    loop {
+        let next_id = next_sequential_id(parent_dir).await;
+        let dir = parent_dir.join(next_id.to_string());
+
+        match fs::create_dir(&dir).await {
+            Ok(_) => return Ok((next_id, dir)),
+            Err(e) if e.kind() == std::io::ErrorKind::AlreadyExists => {
+                // Another upload won the race; retry
+                continue;
+            }
+            Err(e) => return Err(format!("Failed to create report directory: {}", e)),
+        }
+    }
+}

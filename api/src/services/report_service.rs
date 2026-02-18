@@ -9,7 +9,7 @@ use serde_json::json;
 
 use crate::helpers::allure_config::ensure_allure_config;
 use crate::helpers::allure_generator::{collect_history, generate_report, sync_history};
-use crate::helpers::fs_helper::{find_results_dir, next_sequential_id, move_directory_contents, validate_path_segment};
+use crate::helpers::fs_helper::{find_results_dir, allocate_next_id_dir, move_directory_contents, validate_path_segment};
 use crate::helpers::zip_helper::extract_zip;
 
 const MAX_ZIP_SIZE_BYTES: u64 = 500 * 1024 * 1024; // 500MB
@@ -144,10 +144,17 @@ pub async fn upload_report(
         }))).into_response();
     }
 
-    let next_id = next_sequential_id(&parent_dir).await;
+    // Create report dir atomically to avoid race conditions
+    let (next_id, report_dir) = match allocate_next_id_dir(&parent_dir).await {
+        Ok(v) => v,
+        Err(e) => {
+            return (StatusCode::INTERNAL_SERVER_ERROR, Json(json!({
+                "error": e
+            }))).into_response();
+        }
+    };
     let report_id = next_id.to_string();
 
-    let report_dir = parent_dir.join(&report_id);
     let extract_dir = if report_type == "allure" {
         report_dir.join("allure-results")
     } else {
