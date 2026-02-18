@@ -9,7 +9,7 @@ use serde_json::json;
 
 use crate::helpers::allure_config::ensure_allure_config;
 use crate::helpers::allure_generator::{collect_history, generate_report, sync_history};
-use crate::helpers::fs_helper::{find_results_dir, next_sequential_id};
+use crate::helpers::fs_helper::{find_results_dir, next_sequential_id, move_directory_contents};
 use crate::helpers::zip_helper::extract_zip;
 
 pub async fn upload_report(
@@ -144,10 +144,33 @@ pub async fn upload_report(
             }))).into_response(),
         }
 
+        // Move awesome directory contents to report_dir root
+        let awesome_dir = report_dir.join("awesome");
+        if awesome_dir.exists() {
+            println!("Found awesome directory at {:?}", awesome_dir);
+            if let Err(e) = move_directory_contents(&awesome_dir, &report_dir).await {
+                eprintln!("Warning: Failed to move awesome directory contents: {}", e);
+            }
+        } else {
+            eprintln!("Warning: awesome directory not found at {:?}", awesome_dir);
+        }
+
+        // Clean up awesome directory if it still exists
+        if awesome_dir.exists() {
+            if let Err(e) = tokio::fs::remove_dir(&awesome_dir).await {
+                eprintln!("Warning: Failed to remove awesome directory: {}", e);
+            }
+
+            // Clean up allure-results directory if it still exists
+            if let Err(e) = tokio::fs::remove_dir_all(&extract_dir).await {
+                eprintln!("Warning: Failed to remove allure-results directory: {}", e);
+            }
+        }
+
         // Collect history after generation
         collect_history(&parent_dir, &actual_input_dir, &report_dir).await;
     }
-
+    
     (
         StatusCode::OK,
         Json(json!({

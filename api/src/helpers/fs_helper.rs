@@ -1,4 +1,5 @@
 use std::path::PathBuf;
+use tokio::fs;
 
 /// Recursively finds the directory containing allure result JSON files.
 /// Handles cases where zip contains nested folders like allure-results/allure-results/*.json
@@ -72,4 +73,41 @@ pub async fn next_sequential_id(parent_dir: &PathBuf) -> u32 {
     }
 
     max_id + 1
+}
+
+/// Moves all contents from source directory to destination directory
+pub async fn move_directory_contents(source: &PathBuf, dest: &PathBuf) -> Result<(), String> {
+    let mut entries = fs::read_dir(source)
+        .await
+        .map_err(|e| format!("Failed to read source directory: {}", e))?;
+
+    while let Some(entry) = entries.next_entry()
+        .await
+        .map_err(|e| format!("Failed to read entry: {}", e))? 
+    {
+        let source_path = entry.path();
+        let file_name = source_path.file_name()
+            .ok_or("Invalid file name")?;
+        let dest_path = dest.join(file_name);
+
+        if dest_path.exists() {
+            if dest_path.is_dir() {
+                fs::remove_dir_all(&dest_path)
+                    .await
+                    .map_err(|e| format!("Failed to remove existing directory {:?}: {}", dest_path, e))?;
+            } else {
+                fs::remove_file(&dest_path)
+                    .await
+                    .map_err(|e| format!("Failed to remove existing file {:?}: {}", dest_path, e))?;
+            }
+        }
+
+        fs::rename(&source_path, &dest_path)
+            .await
+            .map_err(|e| format!("Failed to move {:?} to {:?}: {}", source_path, dest_path, e))?;
+            
+        println!("Moved {:?} to {:?}", source_path, dest_path);
+    }
+
+    Ok(())
 }
