@@ -73,11 +73,17 @@ pub async fn upload_report(
         }))).into_response();
     }
 
-    // Build directory paths
+    // Build directory paths based on report type
     let mut parent_dir = PathBuf::from(&base_path);
     parent_dir.push(project_name.as_ref().unwrap());
     parent_dir.push(branch.as_ref().unwrap());
     parent_dir.push(report_name.as_ref().unwrap());
+
+    // For raw reports, create a separate "raw" subdirectory
+    if report_type == "raw" {
+        parent_dir.push("raw");
+    }
+
     if let Err(e) = tokio::fs::create_dir_all(&parent_dir).await {
         return (StatusCode::INTERNAL_SERVER_ERROR, Json(json!({
             "error": format!("Failed to create parent directory: {}", e)
@@ -116,7 +122,7 @@ pub async fn upload_report(
         }))).into_response(),
     }
 
-    // Generate allure report
+    // Generate allure report only for allure type
     if report_type == "allure" {
         let actual_input_dir = find_results_dir(&extract_dir).await;
         println!("Resolved allure-results input dir: {:?}", actual_input_dir);
@@ -175,7 +181,22 @@ pub async fn upload_report(
         // Collect history after generation
         collect_history(&parent_dir, &actual_input_dir, &report_dir).await;
     }
-    
+
+    // Build URL based on report type
+    let url = if report_type == "raw" {
+        format!("/{}/{}/{}/raw/{}/index.html",
+            project_name.as_ref().unwrap(),
+            branch.as_ref().unwrap(),
+            report_name.as_ref().unwrap(),
+            report_id)
+    } else {
+        format!("/{}/{}/{}/{}/index.html",
+            project_name.as_ref().unwrap(),
+            branch.as_ref().unwrap(),
+            report_name.as_ref().unwrap(),
+            report_id)
+    };
+
     (
         StatusCode::OK,
         Json(json!({
@@ -184,8 +205,8 @@ pub async fn upload_report(
             "branch": branch,
             "report_name": report_name,
             "report_id": report_id,
-            "url": format!("/reports/{}/{}/{}/index.html",
-                project_name.unwrap(), report_name.unwrap(), report_id)
+            "report_type": report_type,
+            "url": url
         })),
     ).into_response()
 }
