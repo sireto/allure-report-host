@@ -111,3 +111,30 @@ pub async fn move_directory_contents(source: &PathBuf, dest: &PathBuf) -> Result
 
     Ok(())
 }
+
+/// Validates a single path segment to prevent traversal and unsafe chars.
+pub fn validate_path_segment(input: &str, field: &str) -> Result<String, String> {
+    let trimmed = input.trim();
+
+    if trimmed.is_empty() {
+        return Err(format!("{} cannot be empty or whitespace", field));
+    }
+
+    if trimmed.contains('/') || trimmed.contains('\\') {
+        return Err(format!("{} must not contain path separators", field));
+    }
+
+    if trimmed.contains("..") {
+        return Err(format!("{} must not contain '..'", field));
+    }
+
+    let allowed = |c: char| c.is_ascii_alphanumeric() || c == '.' || c == '_' || c == '-';
+    if !trimmed.chars().all(allowed) {
+        return Err(format!(
+            "{} contains invalid characters. Allowed: a-z, A-Z, 0-9, '.', '_', '-'",
+            field
+        ));
+    }
+
+    Ok(trimmed.to_string())
+}

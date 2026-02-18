@@ -9,7 +9,7 @@ use serde_json::json;
 
 use crate::helpers::allure_config::ensure_allure_config;
 use crate::helpers::allure_generator::{collect_history, generate_report, sync_history};
-use crate::helpers::fs_helper::{find_results_dir, next_sequential_id, move_directory_contents};
+use crate::helpers::fs_helper::{find_results_dir, next_sequential_id, move_directory_contents, validate_path_segment};
 use crate::helpers::zip_helper::extract_zip;
 
 const MAX_ZIP_SIZE_BYTES: u64 = 500 * 1024 * 1024; // 500MB
@@ -108,6 +108,24 @@ pub async fn upload_report(
             "error": "No ZIP file uploaded."
         }))).into_response();
     }
+
+    // Sanitize path segments
+    let project_name_safe = match validate_path_segment(project_name.as_ref().unwrap(), "project_name") {
+        Ok(v) => v,
+        Err(e) => return (StatusCode::BAD_REQUEST, Json(json!({ "error": e }))).into_response(),
+    };
+    let branch_safe = match validate_path_segment(branch.as_ref().unwrap(), "branch") {
+        Ok(v) => v,
+        Err(e) => return (StatusCode::BAD_REQUEST, Json(json!({ "error": e }))).into_response(),
+    };
+    let report_name_safe = match validate_path_segment(report_name.as_ref().unwrap(), "report_name") {
+        Ok(v) => v,
+        Err(e) => return (StatusCode::BAD_REQUEST, Json(json!({ "error": e }))).into_response(),
+    };
+
+    project_name = Some(project_name_safe);
+    branch = Some(branch_safe);
+    report_name = Some(report_name_safe);
 
     // Build directory paths based on report type
     let mut parent_dir = PathBuf::from(&base_path);
