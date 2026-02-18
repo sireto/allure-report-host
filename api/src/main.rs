@@ -4,6 +4,7 @@ use axum::{
 use dotenvy::dotenv;
 use std::env;
 use std::net::SocketAddr;
+use tower_http::services::ServeDir;
 use utoipa::{
     openapi::security::{ApiKey, ApiKeyValue, SecurityScheme},
     OpenApi,
@@ -51,15 +52,22 @@ async fn main() {
 
     tracing_subscriber::fmt::init();
 
+    let data_dir = env::var("DATA_DIR").unwrap_or_else(|_| "../data".to_string());
+    let reports_path = format!("{}/reports", data_dir);
+
     let api_routes = Router::new()
         .nest("/api", api::route::create_api_router()) 
         .route_layer(middleware::from_fn(auth))
-        .layer(DefaultBodyLimit::max(50 * 1024 * 1024));
+        .layer(DefaultBodyLimit::max(400 * 1024 * 1024));
+
+    let static_reports = Router::new()
+        .nest_service("/reports", ServeDir::new(&reports_path));
 
     let app = Router::new()
         .merge(SwaggerUi::new("/swagger-ui").url("/api-docs/openapi.json", ApiDoc::openapi()))
         .route("/", get(root))
-        .merge(api_routes);
+        .merge(api_routes)
+        .merge(static_reports);
 
     let addr = SocketAddr::from(([0, 0, 0, 0], 8088));
     println!("Listening on {}", addr);
