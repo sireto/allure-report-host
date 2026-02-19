@@ -4,7 +4,7 @@ use serde_json::json;
 /// Get manifest of all projects, branches, and reports
 pub async fn get_manifest() -> impl IntoResponse {
     use std::collections::BTreeMap;
-    
+
     let data_dir = std::env::var("DATA_DIR").unwrap_or_else(|_| "../data".to_string());
     let data_path = std::path::PathBuf::from(&data_dir);
 
@@ -37,8 +37,9 @@ pub async fn get_manifest() -> impl IntoResponse {
                                 continue;
                             }
 
-                            let report_name = report_entry.file_name().to_string_lossy().to_string();
-                            
+                            let report_name =
+                                report_entry.file_name().to_string_lossy().to_string();
+
                             // Skip numeric directories
                             if report_name.parse::<u32>().is_ok() {
                                 continue;

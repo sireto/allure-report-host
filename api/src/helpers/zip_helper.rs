@@ -1,5 +1,5 @@
-use std::path::PathBuf;
 use std::io::Cursor;
+use std::path::PathBuf;
 use zip::ZipArchive;
 
 /// Extracts a zip archive, stripping a common top-level directory if all entries share one.
@@ -60,13 +60,15 @@ pub fn extract_zip(zip_bytes: Vec<u8>, target_dir: PathBuf) -> Result<usize, Str
     Ok(archive.len())
 }
 
-fn detect_common_prefix(archive: &mut ZipArchive<Cursor<Vec<u8>>>) -> Result<Option<String>, String> {
+fn detect_common_prefix(
+    archive: &mut ZipArchive<Cursor<Vec<u8>>>,
+) -> Result<Option<String>, String> {
     let mut prefix: Option<String> = None;
 
     for i in 0..archive.len() {
         let file = archive.by_index(i).map_err(|e| e.to_string())?;
         let name = file.name().to_string();
-        
+
         // Get the first path component only
         let first_component = name.split('/').next().unwrap_or("").to_string();
 

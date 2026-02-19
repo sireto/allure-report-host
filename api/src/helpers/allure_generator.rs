@@ -42,11 +42,7 @@ pub fn generate_report(
 
 /// Copies history.jsonl from parent_dir into the input directory,
 /// and after generation copies it back from wherever allure wrote it.
-pub async fn sync_history(
-    parent_dir: &PathBuf,
-    input_dir: &PathBuf,
-    _output_dir: &PathBuf,
-) {
+pub async fn sync_history(parent_dir: &PathBuf, input_dir: &PathBuf, _output_dir: &PathBuf) {
     let parent_history = parent_dir.join("history.jsonl");
     let input_history = input_dir.join("history.jsonl");
 
@@ -59,11 +55,7 @@ pub async fn sync_history(
     }
 }
 
-pub async fn collect_history(
-    parent_dir: &PathBuf,
-    input_dir: &PathBuf,
-    output_dir: &PathBuf,
-) {
+pub async fn collect_history(parent_dir: &PathBuf, input_dir: &PathBuf, output_dir: &PathBuf) {
     let parent_history = parent_dir.join("history.jsonl");
 
     // Check input dir first (allure may update in-place)
@@ -86,5 +78,7 @@ pub async fn collect_history(
         return;
     }
 
-    eprintln!("WARNING: history.jsonl was NOT created anywhere. Allure CLI may not support this config option.");
+    eprintln!(
+        "WARNING: history.jsonl was NOT created anywhere. Allure CLI may not support this config option."
+    );
 }

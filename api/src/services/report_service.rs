@@ -3,21 +3,21 @@ use axum::{
     http::StatusCode,
     response::{IntoResponse, Json},
 };
+use serde_json::json;
 use std::env;
 use std::path::PathBuf;
-use serde_json::json;
 
 use crate::helpers::allure_config::ensure_allure_config;
 use crate::helpers::allure_generator::{collect_history, generate_report, sync_history};
-use crate::helpers::fs_helper::{find_results_dir, allocate_next_id_dir, move_directory_contents, validate_path_segment};
+use crate::helpers::fs_helper::{
+    allocate_next_id_dir, find_results_dir, move_directory_contents, validate_path_segment,
+};
 use crate::helpers::zip_helper::extract_zip;
 
 const MAX_ZIP_SIZE_BYTES: u64 = 500 * 1024 * 1024; // 500MB
 const MAX_ZIP_SIZE_MB: u64 = MAX_ZIP_SIZE_BYTES / (1024 * 1024);
 
-pub async fn upload_report(
-    mut multipart: Multipart,
-) -> impl IntoResponse {
+pub async fn upload_report(mut multipart: Multipart) -> impl IntoResponse {
     let mut project_name: Option<String> = None;
     let mut branch: Option<String> = None;
     let mut report_name: Option<String> = None;
@@ -40,7 +40,8 @@ pub async fn upload_report(
                         "error": "Malformed multipart request",
                         "details": e.to_string()
                     })),
-                ).into_response();
+                )
+                    .into_response();
             }
         };
 
@@ -49,22 +50,30 @@ pub async fn upload_report(
         match field_name.as_str() {
             "project_name" => {
                 if let Ok(val) = field.text().await {
-                    if !val.is_empty() { project_name = Some(val); }
+                    if !val.is_empty() {
+                        project_name = Some(val);
+                    }
                 }
             }
             "branch" => {
                 if let Ok(val) = field.text().await {
-                    if !val.is_empty() { branch = Some(val); }
+                    if !val.is_empty() {
+                        branch = Some(val);
+                    }
                 }
             }
             "report_name" => {
                 if let Ok(val) = field.text().await {
-                    if !val.is_empty() { report_name = Some(val); }
+                    if !val.is_empty() {
+                        report_name = Some(val);
+                    }
                 }
             }
             "type" | "report_type" => {
                 if let Ok(val) = field.text().await {
-                    if !val.is_empty() { report_type = val.to_lowercase(); }
+                    if !val.is_empty() {
+                        report_type = val.to_lowercase();
+                    }
                 }
             }
             _ => {
@@ -101,8 +110,9 @@ pub async fn upload_report(
                                     Json(json!({
                                         "error": format!("Failed to read uploaded file: {}", e),
                                         "field": "file"
-                                    }))
-                                ).into_response();
+                                    })),
+                                )
+                                    .into_response();
                             }
                         }
                     }
@@ -113,26 +123,38 @@ pub async fn upload_report(
 
     // Validate required fields
     if project_name.is_none() || report_name.is_none() || branch.is_none() {
-        return (StatusCode::BAD_REQUEST, Json(json!({
-            "error": "Missing required metadata fields (project_name, report_name, branch)."
-        }))).into_response();
+        return (
+            StatusCode::BAD_REQUEST,
+            Json(json!({
+                "error": "Missing required metadata fields (project_name, report_name, branch)."
+            })),
+        )
+            .into_response();
     }
     if zip_data.is_none() {
-        return (StatusCode::BAD_REQUEST, Json(json!({
-            "error": "No ZIP file uploaded."
-        }))).into_response();
+        return (
+            StatusCode::BAD_REQUEST,
+            Json(json!({
+                "error": "No ZIP file uploaded."
+            })),
+        )
+            .into_response();
     }
 
     // Sanitize path segments
-    let project_name_safe = match validate_path_segment(project_name.as_ref().unwrap(), "project_name") {
-        Ok(v) => v,
-        Err(e) => return (StatusCode::BAD_REQUEST, Json(json!({ "error": e }))).into_response(),
-    };
+    let project_name_safe =
+        match validate_path_segment(project_name.as_ref().unwrap(), "project_name") {
+            Ok(v) => v,
+            Err(e) => {
+                return (StatusCode::BAD_REQUEST, Json(json!({ "error": e }))).into_response();
+            }
+        };
     let branch_safe = match validate_path_segment(branch.as_ref().unwrap(), "branch") {
         Ok(v) => v,
         Err(e) => return (StatusCode::BAD_REQUEST, Json(json!({ "error": e }))).into_response(),
     };
-    let report_name_safe = match validate_path_segment(report_name.as_ref().unwrap(), "report_name") {
+    let report_name_safe = match validate_path_segment(report_name.as_ref().unwrap(), "report_name")
+    {
         Ok(v) => v,
         Err(e) => return (StatusCode::BAD_REQUEST, Json(json!({ "error": e }))).into_response(),
     };
@@ -153,18 +175,26 @@ pub async fn upload_report(
     }
 
     if let Err(e) = tokio::fs::create_dir_all(&parent_dir).await {
-        return (StatusCode::INTERNAL_SERVER_ERROR, Json(json!({
-            "error": format!("Failed to create parent directory: {}", e)
-        }))).into_response();
+        return (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            Json(json!({
+                "error": format!("Failed to create parent directory: {}", e)
+            })),
+        )
+            .into_response();
     }
 
     // Create report dir atomically to avoid race conditions
     let (next_id, report_dir) = match allocate_next_id_dir(&parent_dir).await {
         Ok(v) => v,
         Err(e) => {
-            return (StatusCode::INTERNAL_SERVER_ERROR, Json(json!({
-                "error": e
-            }))).into_response();
+            return (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(json!({
+                    "error": e
+                })),
+            )
+                .into_response();
         }
     };
     let report_id = next_id.to_string();
@@ -176,25 +206,44 @@ pub async fn upload_report(
     };
 
     if let Err(e) = tokio::fs::create_dir_all(&extract_dir).await {
-        return (StatusCode::INTERNAL_SERVER_ERROR, Json(json!({
-            "error": format!("Failed to create directory: {}", e)
-        }))).into_response();
+        return (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            Json(json!({
+                "error": format!("Failed to create directory: {}", e)
+            })),
+        )
+            .into_response();
     }
 
     // Extract zip
     let zip_bytes = zip_data.unwrap();
     let target_dir = extract_dir.clone();
 
-    let extract_result = tokio::task::spawn_blocking(move || extract_zip(zip_bytes, target_dir)).await;
+    let extract_result =
+        tokio::task::spawn_blocking(move || extract_zip(zip_bytes, target_dir)).await;
 
     match extract_result {
-        Ok(Ok(count)) => { println!("Extracted {} entries from zip", count); }
-        Ok(Err(e)) => return (StatusCode::INTERNAL_SERVER_ERROR, Json(json!({
-            "error": format!("Zip extraction failed: {}", e)
-        }))).into_response(),
-        Err(e) => return (StatusCode::INTERNAL_SERVER_ERROR, Json(json!({
-            "error": format!("Extraction panic: {}", e)
-        }))).into_response(),
+        Ok(Ok(count)) => {
+            println!("Extracted {} entries from zip", count);
+        }
+        Ok(Err(e)) => {
+            return (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(json!({
+                    "error": format!("Zip extraction failed: {}", e)
+                })),
+            )
+                .into_response();
+        }
+        Err(e) => {
+            return (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(json!({
+                    "error": format!("Extraction panic: {}", e)
+                })),
+            )
+                .into_response();
+        }
     }
 
     // Generate allure report only for allure type
@@ -211,23 +260,36 @@ pub async fn upload_report(
         sync_history(&parent_dir, &actual_input_dir, &report_dir).await;
 
         // Canonicalize paths for the command
-        let abs_input = std::fs::canonicalize(&actual_input_dir)
-            .unwrap_or_else(|_| actual_input_dir.clone());
-        let abs_output = std::fs::canonicalize(&report_dir)
-            .unwrap_or_else(|_| report_dir.clone());
-        let abs_parent = std::fs::canonicalize(&parent_dir)
-            .unwrap_or_else(|_| parent_dir.clone());
+        let abs_input =
+            std::fs::canonicalize(&actual_input_dir).unwrap_or_else(|_| actual_input_dir.clone());
+        let abs_output = std::fs::canonicalize(&report_dir).unwrap_or_else(|_| report_dir.clone());
+        let abs_parent = std::fs::canonicalize(&parent_dir).unwrap_or_else(|_| parent_dir.clone());
 
         let gen_result = tokio::task::spawn_blocking(move || {
             generate_report(&abs_input, &abs_output, &abs_parent)
-        }).await;
+        })
+        .await;
 
         match gen_result {
-            Ok(Ok(msg)) => { println!("Allure generation succeeded: {}", msg); }
-            Ok(Err(e)) => return (StatusCode::INTERNAL_SERVER_ERROR, Json(json!({ "error": e }))).into_response(),
-            Err(e) => return (StatusCode::INTERNAL_SERVER_ERROR, Json(json!({
-                "error": format!("Generation panic: {}", e)
-            }))).into_response(),
+            Ok(Ok(msg)) => {
+                println!("Allure generation succeeded: {}", msg);
+            }
+            Ok(Err(e)) => {
+                return (
+                    StatusCode::INTERNAL_SERVER_ERROR,
+                    Json(json!({ "error": e })),
+                )
+                    .into_response();
+            }
+            Err(e) => {
+                return (
+                    StatusCode::INTERNAL_SERVER_ERROR,
+                    Json(json!({
+                        "error": format!("Generation panic: {}", e)
+                    })),
+                )
+                    .into_response();
+            }
         }
 
         // Move awesome directory contents to report_dir root
@@ -259,17 +321,21 @@ pub async fn upload_report(
 
     // Build URL based on report type
     let url = if report_type == "raw" {
-        format!("/{}/{}/{}/raw/{}/index.html",
+        format!(
+            "/{}/{}/{}/raw/{}/index.html",
             project_name.as_ref().unwrap(),
             branch.as_ref().unwrap(),
             report_name.as_ref().unwrap(),
-            report_id)
+            report_id
+        )
     } else {
-        format!("/{}/{}/{}/{}/index.html",
+        format!(
+            "/{}/{}/{}/{}/index.html",
             project_name.as_ref().unwrap(),
             branch.as_ref().unwrap(),
             report_name.as_ref().unwrap(),
-            report_id)
+            report_id
+        )
     };
 
     (
@@ -283,5 +349,6 @@ pub async fn upload_report(
             "report_type": report_type,
             "url": url
         })),
-    ).into_response()
+    )
+        .into_response()
 }

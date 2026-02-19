@@ -1,9 +1,6 @@
-use axum::{
-    extract::Multipart,
-    response::IntoResponse,
-};
-use utoipa::ToSchema;
 use crate::services::report_service;
+use axum::{extract::Multipart, response::IntoResponse};
+use utoipa::ToSchema;
 
 #[derive(ToSchema)]
 #[allow(dead_code)]
@@ -15,7 +12,7 @@ pub struct FileUploadRequest {
     #[schema(example = "daily-test")]
     report_name: String,
     #[schema(default = "allure", example = "allure")]
-    r#type: Option<String>, 
+    r#type: Option<String>,
     #[schema(value_type = String, format = Binary)]
     file: Vec<u8>,
 }
@@ -34,8 +31,6 @@ pub struct FileUploadRequest {
         ("api_key" = [])
     )
 )]
-pub async fn upload_report(
-    multipart: Multipart,
-) -> impl IntoResponse {
+pub async fn upload_report(multipart: Multipart) -> impl IntoResponse {
     report_service::upload_report(multipart).await
 }

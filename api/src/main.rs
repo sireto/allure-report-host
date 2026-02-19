@@ -1,5 +1,11 @@
+use api::handlers::manifest::get_manifest;
 use axum::{
-    Json, Router, extract::{DefaultBodyLimit, Request}, http::{HeaderMap, StatusCode}, middleware::{self, Next}, response::Response, routing::get
+    Json, Router,
+    extract::{DefaultBodyLimit, Request},
+    http::{HeaderMap, StatusCode},
+    middleware::{self, Next},
+    response::Response,
+    routing::get,
 };
 use dotenvy::dotenv;
 use serde_json::json;
@@ -7,11 +13,10 @@ use std::env;
 use std::net::SocketAddr;
 use tower_http::services::ServeDir;
 use utoipa::{
-    openapi::security::{ApiKey, ApiKeyValue, SecurityScheme},
     OpenApi,
+    openapi::security::{ApiKey, ApiKeyValue, SecurityScheme},
 };
 use utoipa_swagger_ui::SwaggerUi;
-use api::handlers::manifest::get_manifest;
 
 #[derive(OpenApi)]
 #[openapi(
@@ -65,15 +70,13 @@ async fn main() {
         .layer(middleware::from_fn(check_content_length))
         .layer(DefaultBodyLimit::max(MAX_UPLOAD_SIZE_BYTES));
 
-    let public_routes = Router::new()
-        .route("/manifest.json", get(get_manifest));
+    let public_routes = Router::new().route("/manifest.json", get(get_manifest));
 
-    let swagger_routes = SwaggerUi::new("/swagger-ui")
-        .url("/api-docs/openapi.json", ApiDoc::openapi());
+    let swagger_routes =
+        SwaggerUi::new("/swagger-ui").url("/api-docs/openapi.json", ApiDoc::openapi());
 
     // Serve static reports without authentication
-    let static_reports = Router::new()
-        .nest_service("/", ServeDir::new(&data_dir));
+    let static_reports = Router::new().nest_service("/", ServeDir::new(&data_dir));
 
     let app = Router::new()
         .merge(swagger_routes)
