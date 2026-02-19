@@ -6,6 +6,7 @@ use utoipa::ToSchema;
 use crate::services::report_service;
 
 #[derive(ToSchema)]
+#[allow(dead_code)]
 pub struct FileUploadRequest {
     #[schema(example = "my-project")]
     project_name: String,

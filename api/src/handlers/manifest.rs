@@ -48,7 +48,7 @@ pub async fn get_manifest() -> impl IntoResponse {
                             if report_name == "raw" {
                                 if let Ok(raw_reports) = std::fs::read_dir(&report_path) {
                                     for raw_entry in raw_reports.flatten() {
-                                        let raw_path = raw_entry.path();
+                                        let _raw_path = raw_entry.path();
                                         if let Ok(file_name) = raw_entry.file_name().into_string() {
                                             if let Ok(id) = file_name.parse::<u32>() {
                                                 let url = format!(
