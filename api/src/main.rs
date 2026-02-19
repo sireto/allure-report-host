@@ -1,5 +1,5 @@
 use axum::{
-    Json, Router, extract::{DefaultBodyLimit, Request}, http::{HeaderMap, StatusCode}, middleware::{self, Next}, response::Response
+    Json, Router, extract::{DefaultBodyLimit, Request}, http::{HeaderMap, StatusCode}, middleware::{self, Next}, response::Response, routing::get
 };
 use dotenvy::dotenv;
 use serde_json::json;
@@ -59,18 +59,26 @@ async fn main() {
     let data_dir = env::var("DATA_DIR").unwrap_or_else(|_| "../data".to_string());
 
     let api_routes = Router::new()
-        .nest("/api", api::route::create_api_router()) 
+        .nest("/api", api::route::create_api_router())
         .route_layer(middleware::from_fn(auth))
         .layer(middleware::from_fn(check_content_length))
         .layer(DefaultBodyLimit::max(MAX_UPLOAD_SIZE_BYTES));
 
+    let public_routes = Router::new()
+        .route("/", get(root));
+
+    let swagger_routes = SwaggerUi::new("/swagger-ui")
+        .url("/api-docs/openapi.json", ApiDoc::openapi());
+
+    // Serve static reports without authentication
     let static_reports = Router::new()
         .nest_service("/", ServeDir::new(&data_dir));
 
     let app = Router::new()
-        .merge(SwaggerUi::new("/swagger-ui").url("/api-docs/openapi.json", ApiDoc::openapi()))
+        .merge(swagger_routes)
+        .merge(public_routes)
         .merge(api_routes)
-        .merge(static_reports);
+        .fallback_service(static_reports);
 
     let addr = SocketAddr::from(([0, 0, 0, 0], 8088));
     println!("Listening on {}", addr);
