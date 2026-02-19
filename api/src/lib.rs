@@ -1,6 +1,9 @@
 pub mod handlers {
     #[path = "report_handler.rs"]
     pub mod report_handler;
+
+    #[path = "manifest.rs"]
+    pub mod manifest;
 }
 
 pub mod models {

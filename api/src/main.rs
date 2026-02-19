@@ -11,6 +11,7 @@ use utoipa::{
     OpenApi,
 };
 use utoipa_swagger_ui::SwaggerUi;
+use api::handlers::manifest::get_manifest;
 
 #[derive(OpenApi)]
 #[openapi(
@@ -65,7 +66,7 @@ async fn main() {
         .layer(DefaultBodyLimit::max(MAX_UPLOAD_SIZE_BYTES));
 
     let public_routes = Router::new()
-        .route("/", get(root));
+        .route("/manifest.json", get(get_manifest));
 
     let swagger_routes = SwaggerUi::new("/swagger-ui")
         .url("/api-docs/openapi.json", ApiDoc::openapi());
