@@ -1,14 +1,11 @@
 use axum::{
-    extract::Request,
-    http::{StatusCode, HeaderMap},
-    middleware::{self, Next},
-    response::Response,
-    routing::get,
-    Router,
+    Json, Router, extract::{DefaultBodyLimit, Request}, http::{HeaderMap, StatusCode}, middleware::{self, Next}, response::Response, routing::get
 };
-use std::net::SocketAddr;
-use std::env;
 use dotenvy::dotenv;
+use serde_json::json;
+use std::env;
+use std::net::SocketAddr;
+use tower_http::services::ServeDir;
 use utoipa::{
     openapi::security::{ApiKey, ApiKeyValue, SecurityScheme},
     OpenApi,
@@ -17,9 +14,16 @@ use utoipa_swagger_ui::SwaggerUi;
 
 #[derive(OpenApi)]
 #[openapi(
-    paths(root),
+    paths(
+        root,
+        api::handlers::report_handler::upload_report
+    ),
     components(
-        schemas()
+        schemas(
+            api::models::report::CreateReportRequest,
+            api::models::report::ReportResponse,
+            api::models::report::ReportType
+        )
     ),
     modifiers(&SecurityAddon),
     info(title = "Allure Report Host API", version = "0.1.0")
@@ -39,36 +43,85 @@ impl utoipa::Modify for SecurityAddon {
     }
 }
 
+const MAX_UPLOAD_SIZE_BYTES: usize = 500 * 1024 * 1024; // 500MB
+const MAX_UPLOAD_SIZE_MB: usize = MAX_UPLOAD_SIZE_BYTES / (1024 * 1024);
+
 #[tokio::main]
 async fn main() {
     dotenv().ok();
 
-    if env::var("API_KEY").is_err() {
-        panic!("CRITICAL ERROR: API_KEY environment variable is not set.");
+    if env::var("API_KEY").is_err() || env::var("API_KEY").unwrap().is_empty() {
+        panic!("CRITICAL ERROR: API_KEY environment variable is not set or is empty.");
     }
 
-    // initialize tracing
     tracing_subscriber::fmt::init();
 
+    let data_dir = env::var("DATA_DIR").unwrap_or_else(|_| "../data".to_string());
+
     let api_routes = Router::new()
-        .route("/", get(root))
-        .route_layer(middleware::from_fn(auth));
+        .nest("/api", api::route::create_api_router())
+        .route_layer(middleware::from_fn(auth))
+        .layer(middleware::from_fn(check_content_length))
+        .layer(DefaultBodyLimit::max(MAX_UPLOAD_SIZE_BYTES));
+
+    let public_routes = Router::new()
+        .route("/", get(root));
+
+    let swagger_routes = SwaggerUi::new("/swagger-ui")
+        .url("/api-docs/openapi.json", ApiDoc::openapi());
+
+    // Serve static reports without authentication
+    let static_reports = Router::new()
+        .nest_service("/", ServeDir::new(&data_dir));
 
     let app = Router::new()
-        .merge(SwaggerUi::new("/swagger-ui").url("/api-docs/openapi.json", ApiDoc::openapi()))
-        .merge(api_routes);
+        .merge(swagger_routes)
+        .merge(public_routes)
+        .merge(api_routes)
+        .fallback_service(static_reports);
 
     let addr = SocketAddr::from(([0, 0, 0, 0], 8088));
     println!("Listening on {}", addr);
+    println!("Max upload size: {}MB", MAX_UPLOAD_SIZE_MB);
     let listener = tokio::net::TcpListener::bind(addr).await.unwrap();
     axum::serve(listener, app).await.unwrap();
+}
+
+/// Middleware to check Content-Length before processing the request
+async fn check_content_length(
+    headers: HeaderMap,
+    request: Request,
+    next: Next,
+) -> Result<Response, (StatusCode, Json<serde_json::Value>)> {
+    if let Some(content_length) = headers.get("content-length") {
+        if let Ok(length_str) = content_length.to_str() {
+            if let Ok(length) = length_str.parse::<u64>() {
+                if length > MAX_UPLOAD_SIZE_BYTES as u64 {
+                    let size_mb = length / (1024 * 1024);
+                    let error_response = json!({
+                        "error": format!(
+                            "File size exceeds maximum limit of {}MB (received: {}MB)",
+                            MAX_UPLOAD_SIZE_MB, size_mb
+                        ),
+                        "max_size_bytes": MAX_UPLOAD_SIZE_BYTES,
+                        "max_size_mb": MAX_UPLOAD_SIZE_MB,
+                        "received_bytes": length,
+                        "received_mb": size_mb
+                    });
+                    return Err((StatusCode::PAYLOAD_TOO_LARGE, Json(error_response)));
+                }
+            }
+        }
+    }
+
+    Ok(next.run(request).await)
 }
 
 async fn auth(headers: HeaderMap, request: Request, next: Next) -> Result<Response, StatusCode> {
     let api_key = env::var("API_KEY").expect("API_KEY must be set");
 
     match headers.get("x-api-key") {
-        Some(key) if key == api_key.as_str() => Ok(next.run(request).await),
+        Some(key) if key.to_str().unwrap_or_default() == api_key => Ok(next.run(request).await),
         _ => Err(StatusCode::UNAUTHORIZED),
     }
 }
