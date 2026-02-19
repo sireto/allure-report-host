@@ -20,23 +20,19 @@ pub fn extract_zip(zip_bytes: Vec<u8>, target_dir: PathBuf) -> Result<usize, Str
 
         // Strip only the first component if it matches the common prefix
         let stripped_path = if let Some(ref prefix) = common_prefix {
-            if let Some(first_component) = raw_path.components().next() {
-                if let std::path::Component::Normal(s) = first_component {
-                    if s.to_string_lossy() == *prefix {
-                        // Remove only the first component
-                        raw_path.components().skip(1).collect::<PathBuf>()
-                    } else {
-                        raw_path.clone()
-                    }
-                } else {
-                    raw_path.clone()
-                }
-            } else {
-                raw_path.clone()
-            }
+    if let Some(std::path::Component::Normal(s)) = raw_path.components().next() {
+        if s.to_string_lossy() == *prefix {
+            // Remove only the first component
+            raw_path.components().skip(1).collect::<PathBuf>()
         } else {
             raw_path.clone()
-        };
+        }
+    } else {
+        raw_path.clone()
+    }
+} else {
+    raw_path.clone()
+};
 
         if stripped_path.as_os_str().is_empty() {
             continue;
@@ -47,11 +43,10 @@ pub fn extract_zip(zip_bytes: Vec<u8>, target_dir: PathBuf) -> Result<usize, Str
         if file.name().ends_with('/') {
             std::fs::create_dir_all(&outpath).map_err(|e| e.to_string())?;
         } else {
-            if let Some(p) = outpath.parent() {
-                if !p.exists() {
+            if let Some(p) = outpath.parent()
+                && !p.exists() {
                     std::fs::create_dir_all(p).map_err(|e| e.to_string())?;
                 }
-            }
             let mut outfile = std::fs::File::create(&outpath).map_err(|e| e.to_string())?;
             std::io::copy(&mut file, &mut outfile).map_err(|e| e.to_string())?;
         }

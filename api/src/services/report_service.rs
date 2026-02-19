@@ -49,36 +49,33 @@ pub async fn upload_report(mut multipart: Multipart) -> impl IntoResponse {
 
         match field_name.as_str() {
             "project_name" => {
-                if let Ok(val) = field.text().await {
-                    if !val.is_empty() {
+                if let Ok(val) = field.text().await
+                    && !val.is_empty() {
                         project_name = Some(val);
                     }
-                }
+                
             }
             "branch" => {
-                if let Ok(val) = field.text().await {
-                    if !val.is_empty() {
+                if let Ok(val) = field.text().await
+                    && !val.is_empty() {
                         branch = Some(val);
                     }
-                }
             }
             "report_name" => {
-                if let Ok(val) = field.text().await {
-                    if !val.is_empty() {
+                if let Ok(val) = field.text().await
+                    && !val.is_empty() {
                         report_name = Some(val);
                     }
-                }
             }
             "type" | "report_type" => {
-                if let Ok(val) = field.text().await {
-                    if !val.is_empty() {
+                if let Ok(val) = field.text().await
+                    && !val.is_empty() {
                         report_type = val.to_lowercase();
                     }
-                }
             }
             _ => {
-                if let Some(file_name) = field.file_name() {
-                    if field_name == "file" || file_name.ends_with(".zip") {
+                if let Some(file_name) = field.file_name()
+                    && (field_name == "file" || file_name.ends_with(".zip")) {
                         match field.bytes().await {
                             Ok(data) => {
                                 zip_size = data.len() as u64;
@@ -116,7 +113,6 @@ pub async fn upload_report(mut multipart: Multipart) -> impl IntoResponse {
                             }
                         }
                     }
-                }
             }
         }
     }

@@ -21,7 +21,6 @@ use utoipa_swagger_ui::SwaggerUi;
 #[derive(OpenApi)]
 #[openapi(
     paths(
-        root,
         api::handlers::report_handler::upload_report
     ),
     components(
@@ -97,10 +96,10 @@ async fn check_content_length(
     request: Request,
     next: Next,
 ) -> Result<Response, (StatusCode, Json<serde_json::Value>)> {
-    if let Some(content_length) = headers.get("content-length") {
-        if let Ok(length_str) = content_length.to_str() {
-            if let Ok(length) = length_str.parse::<u64>() {
-                if length > MAX_UPLOAD_SIZE_BYTES as u64 {
+    if let Some(content_length) = headers.get("content-length")
+        && let Ok(length_str) = content_length.to_str()
+            && let Ok(length) = length_str.parse::<u64>() 
+                && length > MAX_UPLOAD_SIZE_BYTES as u64 {
                     let size_mb = length / (1024 * 1024);
                     let error_response = json!({
                         "error": format!(
@@ -114,9 +113,6 @@ async fn check_content_length(
                     });
                     return Err((StatusCode::PAYLOAD_TOO_LARGE, Json(error_response)));
                 }
-            }
-        }
-    }
 
     Ok(next.run(request).await)
 }
@@ -128,19 +124,4 @@ async fn auth(headers: HeaderMap, request: Request, next: Next) -> Result<Respon
         Some(key) if key.to_str().unwrap_or_default() == api_key => Ok(next.run(request).await),
         _ => Err(StatusCode::UNAUTHORIZED),
     }
-}
-
-#[utoipa::path(
-    get,
-    path = "/",
-    responses(
-        (status = 200, description = "Welcome message", body = String),
-        (status = 401, description = "Unauthorized")
-    ),
-    security(
-        ("api_key" = [])
-    )
-)]
-async fn root() -> &'static str {
-    "Hello, Devs! Welcome to the Allure Report Host API."
 }

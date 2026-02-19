@@ -50,8 +50,8 @@ pub async fn get_manifest() -> impl IntoResponse {
                                 if let Ok(raw_reports) = std::fs::read_dir(&report_path) {
                                     for raw_entry in raw_reports.flatten() {
                                         let _raw_path = raw_entry.path();
-                                        if let Ok(file_name) = raw_entry.file_name().into_string() {
-                                            if let Ok(id) = file_name.parse::<u32>() {
+                                        if let Ok(file_name) = raw_entry.file_name().into_string()
+                                            && let Ok(id) = file_name.parse::<u32>() {
                                                 let url = format!(
                                                     "/{}/{}/{}/raw/{}/index.html",
                                                     project_name, branch_name, report_name, id
@@ -63,7 +63,6 @@ pub async fn get_manifest() -> impl IntoResponse {
                                                     "type": "raw"
                                                 }));
                                             }
-                                        }
                                     }
                                 }
                             } else {
@@ -71,13 +70,11 @@ pub async fn get_manifest() -> impl IntoResponse {
                                 if let Ok(report_ids) = std::fs::read_dir(&report_path) {
                                     let mut max_id: u32 = 0;
                                     for id_entry in report_ids.flatten() {
-                                        if let Ok(file_name) = id_entry.file_name().into_string() {
-                                            if let Ok(id) = file_name.parse::<u32>() {
-                                                if id > max_id {
+                                        if let Ok(file_name) = id_entry.file_name().into_string()
+                                            && let Ok(id) = file_name.parse::<u32>()
+                                                && id > max_id {
                                                     max_id = id;
                                                 }
-                                            }
-                                        }
                                     }
 
                                     if max_id > 0 {
