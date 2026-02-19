@@ -53,7 +53,9 @@ const MAX_UPLOAD_SIZE_MB: usize = MAX_UPLOAD_SIZE_BYTES / (1024 * 1024);
 
 #[tokio::main]
 async fn main() {
-    dotenv().ok();
+    if env::var("RUST_ENV").unwrap_or_default() != "production" {
+        dotenv().ok();
+    }
 
     if env::var("API_KEY").is_err() || env::var("API_KEY").unwrap().is_empty() {
         panic!("CRITICAL ERROR: API_KEY environment variable is not set or is empty.");

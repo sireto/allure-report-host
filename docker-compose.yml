@@ -2,11 +2,11 @@ version: '3.8'
 
 services:
   api:
-    image: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ github.sha }}
+    image: ${IMAGE}:${TAG}
     ports:
       - "8088:8088"
     environment:
-      RUST_ENV: production
+      RUST_ENV: ${RUST_ENV}
       API_KEY: ${API_KEY}
       DATA_DIR: /opt/allure-data
     volumes:
