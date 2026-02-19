@@ -51,18 +51,19 @@ pub async fn get_manifest() -> impl IntoResponse {
                                     for raw_entry in raw_reports.flatten() {
                                         let _raw_path = raw_entry.path();
                                         if let Ok(file_name) = raw_entry.file_name().into_string()
-                                            && let Ok(id) = file_name.parse::<u32>() {
-                                                let url = format!(
-                                                    "/{}/{}/{}/raw/{}/index.html",
-                                                    project_name, branch_name, report_name, id
-                                                );
-                                                reports.push(json!({
-                                                    "name": format!("{} (Raw)", report_name),
-                                                    "id": id,
-                                                    "path": url,
-                                                    "type": "raw"
-                                                }));
-                                            }
+                                            && let Ok(id) = file_name.parse::<u32>()
+                                        {
+                                            let url = format!(
+                                                "/{}/{}/{}/raw/{}/index.html",
+                                                project_name, branch_name, report_name, id
+                                            );
+                                            reports.push(json!({
+                                                "name": format!("{} (Raw)", report_name),
+                                                "id": id,
+                                                "path": url,
+                                                "type": "raw"
+                                            }));
+                                        }
                                     }
                                 }
                             } else {
@@ -72,9 +73,10 @@ pub async fn get_manifest() -> impl IntoResponse {
                                     for id_entry in report_ids.flatten() {
                                         if let Ok(file_name) = id_entry.file_name().into_string()
                                             && let Ok(id) = file_name.parse::<u32>()
-                                                && id > max_id {
-                                                    max_id = id;
-                                                }
+                                            && id > max_id
+                                        {
+                                            max_id = id;
+                                        }
                                     }
 
                                     if max_id > 0 {

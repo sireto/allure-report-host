@@ -16,10 +16,11 @@ pub async fn find_results_dir(dir: &PathBuf) -> PathBuf {
                 let path = entry.path();
                 if path.is_file() {
                     if let Some(ext) = path.extension()
-                        && (ext == "json" || ext == "xml" || ext == "txt") {
-                            has_json = true;
-                            break;
-                        }
+                        && (ext == "json" || ext == "xml" || ext == "txt")
+                    {
+                        has_json = true;
+                        break;
+                    }
                 } else if path.is_dir() {
                     subdir_count += 1;
                     if single_subdir.is_none() {
@@ -57,14 +58,14 @@ pub async fn next_sequential_id(parent_dir: &PathBuf) -> u32 {
     match tokio::fs::read_dir(parent_dir).await {
         Ok(mut entries) => {
             while let Ok(Some(entry)) = entries.next_entry().await {
-                if let Ok(ft) = entry.file_type().await 
-                    && ft.is_dir() 
-                        && let Some(name) = entry.file_name().to_str() 
-                            && let Ok(id) = name.parse::<u32>() 
-                                && id > max_id {
-                                    max_id = id;
-                                }
-                
+                if let Ok(ft) = entry.file_type().await
+                    && ft.is_dir()
+                    && let Some(name) = entry.file_name().to_str()
+                    && let Ok(id) = name.parse::<u32>()
+                    && id > max_id
+                {
+                    max_id = id;
+                }
             }
         }
         Err(e) => {

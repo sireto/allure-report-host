@@ -50,39 +50,43 @@ pub async fn upload_report(mut multipart: Multipart) -> impl IntoResponse {
         match field_name.as_str() {
             "project_name" => {
                 if let Ok(val) = field.text().await
-                    && !val.is_empty() {
-                        project_name = Some(val);
-                    }
-                
+                    && !val.is_empty()
+                {
+                    project_name = Some(val);
+                }
             }
             "branch" => {
                 if let Ok(val) = field.text().await
-                    && !val.is_empty() {
-                        branch = Some(val);
-                    }
+                    && !val.is_empty()
+                {
+                    branch = Some(val);
+                }
             }
             "report_name" => {
                 if let Ok(val) = field.text().await
-                    && !val.is_empty() {
-                        report_name = Some(val);
-                    }
+                    && !val.is_empty()
+                {
+                    report_name = Some(val);
+                }
             }
             "type" | "report_type" => {
                 if let Ok(val) = field.text().await
-                    && !val.is_empty() {
-                        report_type = val.to_lowercase();
-                    }
+                    && !val.is_empty()
+                {
+                    report_type = val.to_lowercase();
+                }
             }
             _ => {
                 if let Some(file_name) = field.file_name()
-                    && (field_name == "file" || file_name.ends_with(".zip")) {
-                        match field.bytes().await {
-                            Ok(data) => {
-                                zip_size = data.len() as u64;
+                    && (field_name == "file" || file_name.ends_with(".zip"))
+                {
+                    match field.bytes().await {
+                        Ok(data) => {
+                            zip_size = data.len() as u64;
 
-                                if zip_size > MAX_ZIP_SIZE_BYTES {
-                                    let size_mb = zip_size / (1024 * 1024);
-                                    return (
+                            if zip_size > MAX_ZIP_SIZE_BYTES {
+                                let size_mb = zip_size / (1024 * 1024);
+                                return (
                                         StatusCode::PAYLOAD_TOO_LARGE,
                                         Json(json!({
                                             "error": format!(
@@ -96,23 +100,23 @@ pub async fn upload_report(mut multipart: Multipart) -> impl IntoResponse {
                                             "field": "file"
                                         }))
                                     ).into_response();
-                                }
+                            }
 
-                                zip_data = Some(data.to_vec());
-                            }
-                            Err(e) => {
-                                eprintln!("Failed to read file bytes: {}", e);
-                                return (
-                                    StatusCode::BAD_REQUEST,
-                                    Json(json!({
-                                        "error": format!("Failed to read uploaded file: {}", e),
-                                        "field": "file"
-                                    })),
-                                )
-                                    .into_response();
-                            }
+                            zip_data = Some(data.to_vec());
+                        }
+                        Err(e) => {
+                            eprintln!("Failed to read file bytes: {}", e);
+                            return (
+                                StatusCode::BAD_REQUEST,
+                                Json(json!({
+                                    "error": format!("Failed to read uploaded file: {}", e),
+                                    "field": "file"
+                                })),
+                            )
+                                .into_response();
                         }
                     }
+                }
             }
         }
     }

@@ -98,21 +98,22 @@ async fn check_content_length(
 ) -> Result<Response, (StatusCode, Json<serde_json::Value>)> {
     if let Some(content_length) = headers.get("content-length")
         && let Ok(length_str) = content_length.to_str()
-            && let Ok(length) = length_str.parse::<u64>() 
-                && length > MAX_UPLOAD_SIZE_BYTES as u64 {
-                    let size_mb = length / (1024 * 1024);
-                    let error_response = json!({
-                        "error": format!(
-                            "File size exceeds maximum limit of {}MB (received: {}MB)",
-                            MAX_UPLOAD_SIZE_MB, size_mb
-                        ),
-                        "max_size_bytes": MAX_UPLOAD_SIZE_BYTES,
-                        "max_size_mb": MAX_UPLOAD_SIZE_MB,
-                        "received_bytes": length,
-                        "received_mb": size_mb
-                    });
-                    return Err((StatusCode::PAYLOAD_TOO_LARGE, Json(error_response)));
-                }
+        && let Ok(length) = length_str.parse::<u64>()
+        && length > MAX_UPLOAD_SIZE_BYTES as u64
+    {
+        let size_mb = length / (1024 * 1024);
+        let error_response = json!({
+            "error": format!(
+                "File size exceeds maximum limit of {}MB (received: {}MB)",
+                MAX_UPLOAD_SIZE_MB, size_mb
+            ),
+            "max_size_bytes": MAX_UPLOAD_SIZE_BYTES,
+            "max_size_mb": MAX_UPLOAD_SIZE_MB,
+            "received_bytes": length,
+            "received_mb": size_mb
+        });
+        return Err((StatusCode::PAYLOAD_TOO_LARGE, Json(error_response)));
+    }
 
     Ok(next.run(request).await)
 }
