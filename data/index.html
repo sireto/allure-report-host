@@ -1,0 +1,768 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test Reports</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        *, *::before, *::after {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        :root {
+            --bg-primary: #09090b;
+            --bg-secondary: #111113;
+            --bg-card: #18181b;
+            --bg-card-hover: #1f1f23;
+            --bg-subtle: #27272a;
+            --border-default: #27272a;
+            --border-hover: #3f3f46;
+            --text-primary: #fafafa;
+            --text-secondary: #a1a1aa;
+            --text-muted: #71717a;
+            --accent: #22d3ee;
+            --accent-dim: rgba(34, 211, 238, 0.1);
+            --accent-border: rgba(34, 211, 238, 0.2);
+            --radius: 10px;
+            --transition: 150ms cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            min-height: 100vh;
+            -webkit-font-smoothing: antialiased;
+            -moz-osx-font-smoothing: grayscale;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 0 24px;
+        }
+
+        /* ─── Top Nav Bar ─── */
+        .topbar {
+            position: sticky;
+            top: 0;
+            z-index: 50;
+            background: rgba(9, 9, 11, 0.8);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border-bottom: 1px solid var(--border-default);
+        }
+
+        .topbar-inner {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 0 24px;
+            height: 56px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .topbar-brand {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            font-weight: 600;
+            font-size: 0.9rem;
+            letter-spacing: -0.01em;
+            color: var(--text-primary);
+        }
+
+        .topbar-logo {
+            width: 28px;
+            height: 28px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .topbar-logo svg {
+            width: 20px;
+            height: 20px;
+            color: var(--accent);
+        }
+
+        .topbar-meta {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+            font-size: 0.8rem;
+            color: var(--text-muted);
+        }
+
+        .topbar-status {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .status-dot {
+            width: 7px;
+            height: 7px;
+            background: #22c55e;
+            border-radius: 50%;
+            box-shadow: 0 0 6px rgba(34, 197, 94, 0.4);
+        }
+
+        /* ─── Header ─── */
+        header {
+            padding: 56px 0 48px;
+        }
+
+        header h1 {
+            font-size: 2rem;
+            font-weight: 700;
+            letter-spacing: -0.04em;
+            color: var(--text-primary);
+            line-height: 1.1;
+            margin-bottom: 8px;
+        }
+
+        .subtitle {
+            color: var(--text-muted);
+            font-size: 0.95rem;
+            font-weight: 400;
+            line-height: 1.5;
+        }
+
+        /* ─── Projects Grid ─── */
+        .projects-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(360px, 1fr));
+            gap: 16px;
+            padding-bottom: 40px;
+        }
+
+        .project-card {
+            background: var(--bg-card);
+            border: 1px solid var(--border-default);
+            border-radius: var(--radius);
+            padding: 24px;
+            transition: border-color var(--transition), background var(--transition);
+        }
+
+        .project-card:hover {
+            border-color: var(--border-hover);
+            background: var(--bg-card-hover);
+        }
+
+        .project-name {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            font-size: 1rem;
+            font-weight: 600;
+            color: var(--text-primary);
+            margin-bottom: 20px;
+            letter-spacing: -0.01em;
+        }
+
+        .project-icon {
+            width: 34px;
+            height: 34px;
+            border-radius: 8px;
+            background: var(--accent-dim);
+            border: 1px solid var(--accent-border);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: var(--accent);
+            font-weight: 600;
+            font-size: 0.85rem;
+            flex-shrink: 0;
+        }
+
+        .branches-list {
+            list-style: none;
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+        }
+
+        .branch-item {
+            /* reset */
+        }
+
+        .branch-link {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 10px 12px;
+            background: transparent;
+            border: 1px solid transparent;
+            border-radius: 8px;
+            text-decoration: none;
+            color: var(--text-secondary);
+            font-size: 0.875rem;
+            font-weight: 450;
+            transition: all var(--transition);
+        }
+
+        .branch-link:hover {
+            background: var(--bg-subtle);
+            border-color: var(--border-default);
+            color: var(--text-primary);
+        }
+
+        .branch-link:hover .branch-icon-svg {
+            color: var(--accent);
+        }
+
+        .branch-icon-svg {
+            width: 16px;
+            height: 16px;
+            color: var(--text-muted);
+            flex-shrink: 0;
+            transition: color var(--transition);
+        }
+
+        .branch-arrow {
+            margin-left: auto;
+            width: 14px;
+            height: 14px;
+            color: var(--text-muted);
+            opacity: 0;
+            transform: translateX(-4px);
+            transition: all var(--transition);
+        }
+
+        .branch-link:hover .branch-arrow {
+            opacity: 1;
+            transform: translateX(0);
+        }
+
+        /* ─── Reports View ─── */
+        .reports-page {
+            display: none;
+        }
+
+        .reports-page.active {
+            display: block;
+        }
+
+        .reports-header {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+            padding: 48px 0 32px;
+        }
+
+        .back-button {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            background: none;
+            border: 1px solid var(--border-default);
+            color: var(--text-secondary);
+            font-size: 0.85rem;
+            font-weight: 500;
+            cursor: pointer;
+            padding: 7px 14px;
+            border-radius: 8px;
+            transition: all var(--transition);
+            font-family: inherit;
+        }
+
+        .back-button:hover {
+            background: var(--bg-subtle);
+            border-color: var(--border-hover);
+            color: var(--text-primary);
+        }
+
+        .back-button svg {
+            width: 14px;
+            height: 14px;
+        }
+
+        .breadcrumb {
+            color: var(--text-muted);
+            font-size: 0.85rem;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .breadcrumb strong {
+            color: var(--text-primary);
+            font-weight: 500;
+        }
+
+        .breadcrumb-sep {
+            color: var(--text-muted);
+            opacity: 0.4;
+        }
+
+        .reports-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+            gap: 12px;
+            padding-bottom: 40px;
+        }
+
+        .report-card {
+            background: var(--bg-card);
+            border: 1px solid var(--border-default);
+            border-radius: var(--radius);
+            padding: 20px;
+            text-decoration: none;
+            color: inherit;
+            display: flex;
+            flex-direction: column;
+            gap: 14px;
+            transition: all var(--transition);
+        }
+
+        .report-card:hover {
+            border-color: var(--border-hover);
+            background: var(--bg-card-hover);
+        }
+
+        .report-name {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            font-size: 0.925rem;
+            font-weight: 600;
+            color: var(--text-primary);
+            letter-spacing: -0.01em;
+        }
+
+        .report-name svg {
+            width: 18px;
+            height: 18px;
+            color: var(--accent);
+            flex-shrink: 0;
+        }
+
+        .report-meta {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            font-size: 0.8rem;
+            color: var(--text-muted);
+        }
+
+        .report-id {
+            background: var(--accent-dim);
+            color: var(--accent);
+            padding: 3px 9px;
+            border-radius: 6px;
+            font-weight: 500;
+            font-size: 0.75rem;
+            border: 1px solid var(--accent-border);
+        }
+
+        .report-version {
+            color: var(--text-muted);
+        }
+
+        /* ─── Empty State ─── */
+        .empty-state {
+            text-align: center;
+            padding: 80px 20px;
+            color: var(--text-muted);
+            grid-column: 1 / -1;
+        }
+
+        .empty-icon-wrap {
+            width: 56px;
+            height: 56px;
+            border-radius: 14px;
+            background: var(--bg-card);
+            border: 1px solid var(--border-default);
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            margin-bottom: 20px;
+        }
+
+        .empty-icon-wrap svg {
+            width: 24px;
+            height: 24px;
+            color: var(--text-muted);
+        }
+
+        .empty-text {
+            font-size: 1rem;
+            font-weight: 600;
+            color: var(--text-primary);
+            margin-bottom: 6px;
+        }
+
+        .empty-subtext {
+            color: var(--text-muted);
+            font-size: 0.875rem;
+        }
+
+        /* ─── Spinner ─── */
+        .loading {
+            text-align: center;
+            padding: 60px 20px;
+            grid-column: 1 / -1;
+        }
+
+        .spinner {
+            display: inline-block;
+            width: 28px;
+            height: 28px;
+            border: 2.5px solid var(--border-default);
+            border-top-color: var(--accent);
+            border-radius: 50%;
+            animation: spin 0.7s linear infinite;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        /* ─── Responsive ─── */
+        @media (max-width: 768px) {
+            header h1 {
+                font-size: 1.5rem;
+            }
+
+            .projects-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .reports-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .reports-header {
+                flex-direction: column;
+                align-items: flex-start;
+                gap: 12px;
+            }
+        }
+
+        /* ─── Fade-in animation ─── */
+        @keyframes fadeUp {
+            from {
+                opacity: 0;
+                transform: translateY(8px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .project-card, .report-card {
+            animation: fadeUp 0.35s ease both;
+        }
+
+        .project-card:nth-child(1) { animation-delay: 0s; }
+        .project-card:nth-child(2) { animation-delay: 0.05s; }
+        .project-card:nth-child(3) { animation-delay: 0.1s; }
+        .project-card:nth-child(4) { animation-delay: 0.15s; }
+        .project-card:nth-child(5) { animation-delay: 0.2s; }
+        .project-card:nth-child(6) { animation-delay: 0.25s; }
+
+        .report-card:nth-child(1) { animation-delay: 0s; }
+        .report-card:nth-child(2) { animation-delay: 0.04s; }
+        .report-card:nth-child(3) { animation-delay: 0.08s; }
+        .report-card:nth-child(4) { animation-delay: 0.12s; }
+        .report-card:nth-child(5) { animation-delay: 0.16s; }
+        .report-card:nth-child(6) { animation-delay: 0.2s; }
+
+        /* ─── Light Theme ─── */
+        [data-theme="light"] {
+            --bg-primary: #f8f9fa;
+            --bg-secondary: #f1f3f5;
+            --bg-card: #ffffff;
+            --bg-card-hover: #f8f9fa;
+            --bg-subtle: #e9ecef;
+            --border-default: #dee2e6;
+            --border-hover: #ced4da;
+            --text-primary: #111827;
+            --text-secondary: #4b5563;
+            --text-muted: #6b7280;
+            --accent: #0891b2;
+            --accent-dim: rgba(8, 145, 178, 0.08);
+            --accent-border: rgba(8, 145, 178, 0.2);
+        }
+
+        [data-theme="light"] .topbar {
+            background: rgba(248, 249, 250, 0.85);
+        }
+
+        [data-theme="light"] .status-dot {
+            box-shadow: 0 0 6px rgba(34, 197, 94, 0.3);
+        }
+
+        /* ─── Theme Toggle ─── */
+        .theme-toggle {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 36px;
+            height: 36px;
+            border-radius: 8px;
+            border: 1px solid var(--border-default);
+            background: transparent;
+            color: var(--text-secondary);
+            cursor: pointer;
+            transition: all var(--transition);
+        }
+
+        .theme-toggle:hover {
+            background: var(--bg-subtle);
+            border-color: var(--border-hover);
+            color: var(--text-primary);
+        }
+
+        .theme-toggle svg {
+            width: 18px;
+            height: 18px;
+        }
+
+        .theme-toggle .icon-sun {
+            display: none;
+        }
+
+        [data-theme="light"] .theme-toggle .icon-sun {
+            display: block;
+        }
+
+        [data-theme="light"] .theme-toggle .icon-moon {
+            display: none;
+        }
+    </style>
+</head>
+<body>
+
+    <!-- Top Bar -->
+    <nav class="topbar">
+        <div class="topbar-inner">
+            <div class="topbar-brand">
+                <div class="topbar-logo">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M3 3h7v7H3zM14 3h7v7h-7zM3 14h7v7H3zM14 17.5a3.5 3.5 0 1 0 7 0 3.5 3.5 0 0 0-7 0z"/>
+                    </svg>
+                </div>
+                Sireto Project Test Reports
+            </div>
+            <div class="topbar-meta">
+                <div class="topbar-status">
+                    <span class="status-dot"></span>
+                    <span>Operational</span>
+                </div>
+                <button class="theme-toggle" onclick="toggleTheme()" aria-label="Toggle light and dark mode">
+                    <svg class="icon-moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z"/></svg>
+                    <svg class="icon-sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v2"/><path d="M12 20v2"/><path d="m4.93 4.93 1.41 1.41"/><path d="m17.66 17.66 1.41 1.41"/><path d="M2 12h2"/><path d="M20 12h2"/><path d="m6.34 17.66-1.41 1.41"/><path d="m19.07 4.93-1.41 1.41"/></svg>
+                </button>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container">
+        <!-- Projects View -->
+        <div id="projectsView">
+            <header>
+                <h1>Test Reports</h1>
+                <p class="subtitle">Browse test results and metrics across projects and branches</p>
+            </header>
+
+            <div id="projectsContainer" class="projects-grid">
+                <div class="loading">
+                    <div class="spinner"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Reports View -->
+        <div id="reportsView" class="reports-page">
+            <div class="reports-header">
+                <button class="back-button" onclick="showProjects()">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5"/><path d="m12 19-7-7 7-7"/></svg>
+                    Back
+                </button>
+                <div class="breadcrumb">
+                    <strong id="breadcrumbProject"></strong>
+                    <span class="breadcrumb-sep">/</span>
+                    <strong id="breadcrumbBranch"></strong>
+                </div>
+            </div>
+
+            <div id="reportsContainer" class="reports-grid"></div>
+        </div>
+    </div>
+
+    <script>
+        const API_BASE = window.location.origin;
+        let projectsData = {};
+
+        // SVG icon templates
+        const icons = {
+            branch: `<svg class="branch-icon-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 3v12"/><path d="M18 9a3 3 0 1 0 0-6 3 3 0 0 0 0 6z"/><path d="M6 21a3 3 0 1 0 0-6 3 3 0 0 0 0 6z"/><path d="M18 9a9 9 0 0 1-9 9"/></svg>`,
+            arrow: `<svg class="branch-arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></svg>`,
+            report: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"/><path d="M14 2v4a2 2 0 0 0 2 2h4"/><path d="M10 12h4"/><path d="M10 16h4"/></svg>`,
+            folder: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 20a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.9a2 2 0 0 1-1.69-.9L9.6 3.9A2 2 0 0 0 7.93 3H4a2 2 0 0 0-2 2v13a2 2 0 0 0 2 2Z"/></svg>`,
+            warning: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3"/><path d="M12 9v4"/><path d="M12 17h.01"/></svg>`,
+            empty: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="20" height="16" x="2" y="4" rx="2"/><path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7"/></svg>`
+        };
+
+        // Initialize
+        async function init() {
+            await loadProjects();
+            updateTimestamp();
+        }
+
+        // Load projects from data directory
+        async function loadProjects() {
+            try {
+                const response = await fetch(`${API_BASE}/`);
+                projectsData = await scanDirectory();
+                renderProjects();
+            } catch (error) {
+                console.error('Error loading projects:', error);
+                document.getElementById('projectsContainer').innerHTML = `
+                    <div class="empty-state">
+                        <div class="empty-icon-wrap">${icons.warning}</div>
+                        <div class="empty-text">Unable to load projects</div>
+                        <div class="empty-subtext">Please check the console for details</div>
+                    </div>
+                `;
+            }
+        }
+
+        // Scan directory structure
+        async function scanDirectory() {
+            try {
+                const response = await fetch(`${API_BASE}/manifest.json`).catch(() => null);
+                if (response && response.ok) {
+                    return await response.json();
+                }
+                return {};
+            } catch (error) {
+                console.error('Error scanning directory:', error);
+                return {};
+            }
+        }
+
+        // Render projects
+        function renderProjects() {
+            const container = document.getElementById('projectsContainer');
+            
+            if (Object.keys(projectsData).length === 0) {
+                container.innerHTML = `
+                    <div class="empty-state">
+                        <div class="empty-icon-wrap">${icons.folder}</div>
+                        <div class="empty-text">No projects found</div>
+                        <div class="empty-subtext">Upload your first report to get started</div>
+                    </div>
+                `;
+                return;
+            }
+
+            container.innerHTML = Object.entries(projectsData).map(([projectName, branches]) => `
+                <div class="project-card">
+                    <div class="project-name">
+                        <div class="project-icon">${projectName.charAt(0).toUpperCase()}</div>
+                        ${projectName}
+                    </div>
+                    <ul class="branches-list">
+                        ${Object.keys(branches).map(branch => `
+                            <li class="branch-item">
+                                <a href="#" class="branch-link" onclick="showReports('${projectName}', '${branch}'); return false;">
+                                    ${icons.branch}
+                                    <span>${branch}</span>
+                                    ${icons.arrow}
+                                </a>
+                            </li>
+                        `).join('')}
+                    </ul>
+                </div>
+            `).join('');
+        }
+
+        // Show reports for a branch
+        function showReports(project, branch) {
+            const reports = projectsData[project]?.[branch] || [];
+            const container = document.getElementById('reportsContainer');
+            
+            document.getElementById('projectsView').style.display = 'none';
+            document.getElementById('reportsView').classList.add('active');
+            document.getElementById('breadcrumbProject').textContent = project;
+            document.getElementById('breadcrumbBranch').textContent = branch;
+
+            if (reports.length === 0) {
+                container.innerHTML = `
+                    <div class="empty-state">
+                        <div class="empty-icon-wrap">${icons.empty}</div>
+                        <div class="empty-text">No reports found</div>
+                        <div class="empty-subtext">Upload test results for this branch</div>
+                    </div>
+                `;
+                return;
+            }
+
+            container.innerHTML = reports.map(report => `
+                <a href="${report.path}" class="report-card">
+                    <div class="report-name">
+                        ${icons.report}
+                        ${report.name}
+                    </div>
+                    <div class="report-meta">
+                        <span class="report-id">Run #${report.id}</span>
+                        <span class="report-version">Latest version</span>
+                    </div>
+                </a>
+            `).join('');
+        }
+
+        // Show projects view
+        function showProjects() {
+            document.getElementById('projectsView').style.display = 'block';
+            document.getElementById('reportsView').classList.remove('active');
+        }
+
+        // Update timestamp
+        function updateTimestamp() {
+            const now = new Date().toLocaleString();
+            document.getElementById('lastUpdate').textContent = now;
+        }
+
+        // Theme toggle
+        function getPreferredTheme() {
+            const stored = localStorage.getItem('theme');
+            if (stored) return stored;
+            return window.matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark';
+        }
+
+        function applyTheme(theme) {
+            document.documentElement.setAttribute('data-theme', theme);
+            localStorage.setItem('theme', theme);
+        }
+
+        function toggleTheme() {
+            const current = document.documentElement.getAttribute('data-theme') || 'dark';
+            applyTheme(current === 'dark' ? 'light' : 'dark');
+        }
+
+        // Apply theme immediately
+        applyTheme(getPreferredTheme());
+
+        // Listen for system preference changes
+        window.matchMedia('(prefers-color-scheme: light)').addEventListener('change', (e) => {
+            if (!localStorage.getItem('theme')) {
+                applyTheme(e.matches ? 'light' : 'dark');
+            }
+        });
+
+        // Start
+        init();
+    </script>
+</body>
+</html>
