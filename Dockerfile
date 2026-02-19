@@ -1,25 +1,19 @@
-# --- Build Stage ---
-FROM rust:1.86-bookworm AS builder
+FROM rust:1.93.0-bookworm AS builder
 
 WORKDIR /app
 
-# Copy manifests first for better caching
 COPY api/Cargo.toml api/Cargo.toml
+COPY api/Cargo.lock api/Cargo.lock
 
-# Create a dummy main to cache dependencies
-RUN mkdir -p api/src && \
-    echo "fn main() {}" > api/src/main.rs && \
-    echo "" > api/src/lib.rs && \
-    cd api && cargo build --release && \
-    rm -rf api/src
+RUN mkdir -p api/src && echo "pub fn dummy() {}" > api/src/lib.rs && \
+    echo "fn main() { api::dummy(); }" > api/src/main.rs && \
+    cd api && cargo build --release || true
 
-# Copy actual source code
+# Copy the source and build
 COPY api/src api/src
+RUN cd api && cargo build --release
 
-# Touch main.rs to force rebuild of our code (not deps)
-RUN touch api/src/main.rs && cd api && cargo build --release
-
-# --- Runtime Stage ---
+# Runtime Stage
 FROM debian:bookworm-slim
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
@@ -34,12 +28,10 @@ WORKDIR /app
 
 COPY --from=builder /app/api/target/release/api /app/api
 COPY scripts/ /app/scripts/
+COPY data/ /app/data/
 
 RUN chmod +x /app/scripts/*.sh
 
 EXPOSE 8088
-
-ENV DATA_DIR=/app/data
-ENV API_KEY=""
 
 CMD ["/app/api"]
