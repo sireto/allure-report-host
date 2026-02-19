@@ -9,8 +9,7 @@ pub fn extract_zip(zip_bytes: Vec<u8>, target_dir: PathBuf) -> Result<usize, Str
 
     // Detect common top-level directory
     let common_prefix = detect_common_prefix(&mut archive)?;
-    let strip_prefix = common_prefix.unwrap_or_default();
-    println!("Zip strip prefix: '{}'", strip_prefix);
+    println!("Zip common prefix: {:?}", common_prefix);
 
     for i in 0..archive.len() {
         let mut file = archive.by_index(i).map_err(|e| e.to_string())?;
@@ -19,16 +18,25 @@ pub fn extract_zip(zip_bytes: Vec<u8>, target_dir: PathBuf) -> Result<usize, Str
             None => continue,
         };
 
-        let stripped_path = raw_path
-            .components()
-            .skip_while(|c| {
-                if let std::path::Component::Normal(s) = c {
-                    s.to_string_lossy() == strip_prefix
+        // Strip only the first component if it matches the common prefix
+        let stripped_path = if let Some(ref prefix) = common_prefix {
+            if let Some(first_component) = raw_path.components().next() {
+                if let std::path::Component::Normal(s) = first_component {
+                    if s.to_string_lossy() == *prefix {
+                        // Remove only the first component
+                        raw_path.components().skip(1).collect::<PathBuf>()
+                    } else {
+                        raw_path.clone()
+                    }
                 } else {
-                    false
+                    raw_path.clone()
                 }
-            })
-            .collect::<PathBuf>();
+            } else {
+                raw_path.clone()
+            }
+        } else {
+            raw_path.clone()
+        };
 
         if stripped_path.as_os_str().is_empty() {
             continue;
@@ -58,7 +66,14 @@ fn detect_common_prefix(archive: &mut ZipArchive<Cursor<Vec<u8>>>) -> Result<Opt
     for i in 0..archive.len() {
         let file = archive.by_index(i).map_err(|e| e.to_string())?;
         let name = file.name().to_string();
+        
+        // Get the first path component only
         let first_component = name.split('/').next().unwrap_or("").to_string();
+
+        // Skip empty components (from trailing slashes or root)
+        if first_component.is_empty() {
+            continue;
+        }
 
         match &prefix {
             None => prefix = Some(first_component),

@@ -23,12 +23,27 @@ pub async fn upload_report(
     let mut report_name: Option<String> = None;
     let mut report_type: String = "allure".to_string();
     let mut zip_data: Option<Vec<u8>> = None;
-    let mut zip_size: u64 = 0;
+    let mut zip_size: u64;
 
     let base_path = env::var("DATA_DIR").unwrap_or_else(|_| "../data".to_string());
 
     // Parse multipart fields
-    while let Some(field) = multipart.next_field().await.unwrap_or(None) {
+    loop {
+        let next = multipart.next_field().await;
+        let field = match next {
+            Ok(Some(f)) => f,
+            Ok(None) => break,
+            Err(e) => {
+                return (
+                    StatusCode::BAD_REQUEST,
+                    Json(json!({
+                        "error": "Malformed multipart request",
+                        "details": e.to_string()
+                    })),
+                ).into_response();
+            }
+        };
+
         let field_name = field.name().unwrap_or_default().to_string();
 
         match field_name.as_str() {
@@ -58,8 +73,7 @@ pub async fn upload_report(
                         match field.bytes().await {
                             Ok(data) => {
                                 zip_size = data.len() as u64;
-                                
-                                // Check file size before storing
+
                                 if zip_size > MAX_ZIP_SIZE_BYTES {
                                     let size_mb = zip_size / (1024 * 1024);
                                     return (
@@ -77,7 +91,7 @@ pub async fn upload_report(
                                         }))
                                     ).into_response();
                                 }
-                                
+
                                 zip_data = Some(data.to_vec());
                             }
                             Err(e) => {

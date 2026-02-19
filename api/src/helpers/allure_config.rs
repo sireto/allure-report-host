@@ -13,7 +13,10 @@ pub async fn ensure_allure_config(parent_dir: &PathBuf, _report_name: &str) -> R
         "appendHistory": true
     });
 
-    tokio::fs::write(&config_path, serde_json::to_string_pretty(&config_content).unwrap())
+    let config_json = serde_json::to_string_pretty(&config_content)
+        .map_err(|e| format!("Failed to serialize allure config: {}", e))?;
+
+    tokio::fs::write(&config_path, config_json)
         .await
         .map_err(|e| format!("Failed to write allurerc.json: {}", e))?;
 
