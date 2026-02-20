@@ -32,6 +32,6 @@ COPY data/ /app/data/
 
 RUN chmod +x /app/scripts/*.sh
 
-EXPOSE 8088
+EXPOSE 8080
 
 CMD ["/app/api"]
