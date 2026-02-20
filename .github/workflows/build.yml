@@ -48,6 +48,10 @@ jobs:
           else
             # For branch pushes, use commit SHA
             TAGS="${IMAGE}:${{ github.sha }}"
+            # Add latest tag for master or main branch
+            if [[ "${{ github.ref }}" == "refs/heads/master" ]] || [[ "${{ github.ref }}" == "refs/heads/main" ]]; then
+              TAGS="${TAGS},${IMAGE}:latest"
+            fi
           fi
           echo "tags=${TAGS}" >> $GITHUB_OUTPUT
 
