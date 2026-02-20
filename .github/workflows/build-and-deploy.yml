@@ -67,7 +67,7 @@ jobs:
         run: |
           IMAGE="${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}"
           TAG="${{ github.sha }}"
-
+          export IMAGE TAG
           docker --host "$DOCKER_HOST" stack deploy \
             --compose-file docker-compose.yml \
             --with-registry-auth \
