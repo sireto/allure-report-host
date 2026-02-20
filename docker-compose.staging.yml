@@ -6,8 +6,6 @@ networks:
 services:
   api:
     image: ghcr.io/sireto/allure-report-host:${TAG}
-    ports:
-      - "8080:8080"
     environment:
       RUST_ENV: production
       VIRTUAL_HOST: https://${STAGING_HOST} -> :8080
