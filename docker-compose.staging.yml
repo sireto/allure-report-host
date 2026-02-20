@@ -1,23 +1,29 @@
 version: '3.8'
-
+networks:
+  default:
+    external: true
+    name: frontend
 services:
   api:
-    image: ghcr.io/sireto/allure-report-host:v1
-    build: 
-      context: .
-      dockerfile: Dockerfile
+    image: ghcr.io/sireto/allure-report-host:${TAG}
     ports:
       - "8080:8080"
     environment:
       RUST_ENV: production
+      VIRTUAL_HOST: https://${STAGING_HOST} -> :8080
       API_SECRET: ${API_SECRET} # api-secret for build report publication
       DATA_DIR: /data
     volumes:
       - data:/data
     deploy:
       replicas: 1
+      placement:
+        constraints:
+          - node.hostname == prod1
+      resources:
+       limits:
+         memory: 2G
       
-
 volumes:
   data:
     driver: local

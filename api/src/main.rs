@@ -57,8 +57,8 @@ async fn main() {
         dotenv().ok();
     }
 
-    if env::var("API_KEY").is_err() || env::var("API_KEY").unwrap().is_empty() {
-        panic!("CRITICAL ERROR: API_KEY environment variable is not set or is empty.");
+    if env::var("API_SECRET").is_err() || env::var("API_SECRET").unwrap().is_empty() {
+        panic!("CRITICAL ERROR: API_SECRET environment variable is not set or is empty.");
     }
 
     tracing_subscriber::fmt::init();
@@ -85,7 +85,7 @@ async fn main() {
         .merge(api_routes)
         .fallback_service(static_reports);
 
-    let addr = SocketAddr::from(([0, 0, 0, 0], 8088));
+    let addr = SocketAddr::from(([0, 0, 0, 0], 8080));
     println!("Listening on {}", addr);
     println!("Max upload size: {}MB", MAX_UPLOAD_SIZE_MB);
     let listener = tokio::net::TcpListener::bind(addr).await.unwrap();
@@ -121,7 +121,7 @@ async fn check_content_length(
 }
 
 async fn auth(headers: HeaderMap, request: Request, next: Next) -> Result<Response, StatusCode> {
-    let api_key = env::var("API_KEY").expect("API_KEY must be set");
+    let api_key = env::var("API_SECRET").expect("API_SECRET must be set");
 
     match headers.get("x-api-key") {
         Some(key) if key.to_str().unwrap_or_default() == api_key => Ok(next.run(request).await),

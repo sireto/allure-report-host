@@ -1,0 +1,85 @@
+name: Docker Deploy Dev
+
+on:
+  workflow_run:
+    workflows: ["Docker Image Build"]
+    branches: [master]
+    types:
+      - completed
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    if: ${{ github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success' }}
+    name: Deploy Docker Images
+    runs-on: builder
+    steps:
+      - name: Set commit status to pending
+        uses: actions/github-script@v6
+        with:
+          script: |
+            const sha = context.eventName === 'workflow_dispatch' ? github.context.sha : (context.payload.workflow_run ? context.payload.workflow_run.head_sha : github.context.sha);
+            github.rest.repos.createCommitStatus({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              sha: sha,
+              state: 'pending',
+              description: 'Deployment is running',
+              context: 'deploy/dev',
+              target_url: `${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}`
+            })
+
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event_name == 'workflow_dispatch' && github.sha || github.event.workflow_run.head_sha }}
+
+      - name: Set up Python
+        uses: actions/setup-python@v2
+        with:
+          python-version: '3.x'
+
+      - name: Install docker-stack
+        run: pip install --upgrade docker-stack
+
+      - name: Deploy stack
+        run: docker-stack deploy --with-registry-auth allure-report-host-staging docker-compose.staging.yml
+        env:
+          DOCKER_HOST: ${{ secrets.STAGING_DOCKER_HOST }}
+          API_SECRET: ${{ secrets.STAGING_API_SECRET }}
+          STAGING_HOST: ${{ vars.STAGING_HOST }}
+          COMMIT_SHA: ${{ github.event_name == 'workflow_dispatch' && github.sha || github.event.workflow_run.head_sha }}
+          IMAGE_TAG: ${{ github.event_name == 'workflow_dispatch' && github.sha || github.event.workflow_run.head_sha }}
+          DEPLOYMENT_NAME: staging
+
+      - name: Set commit status to success
+        if: success()
+        uses: actions/github-script@v6
+        with:
+          script: |
+            const sha = context.eventName === 'workflow_dispatch' ? github.context.sha : (context.payload.workflow_run ? context.payload.workflow_run.head_sha : github.context.sha);
+            github.rest.repos.createCommitStatus({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              sha: sha,
+              state: 'success',
+              description: 'Deployment succeeded',
+              context: 'deploy/dev',
+              target_url: `${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}`
+            })
+
+      - name: Set commit status to failure
+        if: failure()
+        uses: actions/github-script@v6
+        with:
+          script: |
+            const sha = context.eventName === 'workflow_dispatch' ? github.context.sha : (context.payload.workflow_run ? context.payload.workflow_run.head_sha : github.context.sha);
+            github.rest.repos.createCommitStatus({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              sha: sha,
+              state: 'failure',
+              description: 'Deployment failed',
+              context: 'deploy/dev',
+              target_url: `${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}`
+            })
