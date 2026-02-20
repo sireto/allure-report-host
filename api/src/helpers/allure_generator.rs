@@ -16,8 +16,7 @@ pub fn generate_report(
     println!("Allure output (absolute): {}", output_str);
     println!("Allure cwd (config dir): {}", config_str);
 
-    let output = Command::new("npx")
-        .arg("allure")
+    let output = Command::new("allure")
         .arg("generate")
         .arg(&input_str)
         .arg("-o")
@@ -25,7 +24,7 @@ pub fn generate_report(
         .arg("--cwd")
         .arg(&config_str)
         .output()
-        .map_err(|e| format!("Failed to run npx command: {}", e))?;
+        .map_err(|e| format!("Failed to run allure command: {}", e))?;
 
     let stdout_str = String::from_utf8_lossy(&output.stdout).to_string();
     let stderr_str = String::from_utf8_lossy(&output.stderr).to_string();
