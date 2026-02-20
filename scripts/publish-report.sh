@@ -120,6 +120,20 @@ if (( http_code >= 200 && http_code < 300 )); then
         echo "→ Response:"
         jq . "$response" 2>/dev/null || cat "$response"
     fi
+
+    if [[ -n "${GITHUB_TOKEN:-}" ]]; then
+      commit_sha="${GITHUB_SHA:-$(git rev-parse HEAD)}"
+      context="Allure Report"
+      target_url="https://reports.sireto.io/${project_name}/${branch}/${report_name}/index.html"
+      description="Allure report for this build"
+      state="success"
+
+      curl -s -X POST \
+        -H "Authorization: token ${GITHUB_TOKEN}" \
+        -H "Content-Type: application/json" \
+        -d "{\"state\": \"${state}\", \"target_url\": \"${target_url}\", \"description\": \"${description}\", \"context\": \"${context}\"}" \
+        "https://api.github.com/repos/${GITHUB_REPOSITORY}/statuses/${commit_sha}"
+    fi
 else
     echo -e "\n→ Upload failed (HTTP $http_code)" >&2
     if [[ -s "$response" ]]; then
