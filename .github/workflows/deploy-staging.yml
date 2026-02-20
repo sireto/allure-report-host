@@ -1,4 +1,4 @@
-name: Docker Deploy Dev
+name: Deploy Staging
 
 on:
   workflow_run:
@@ -25,7 +25,7 @@ jobs:
               sha: sha,
               state: 'pending',
               description: 'Deployment is running',
-              context: 'deploy/dev',
+              context: 'deploy/staging',
               target_url: `${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}`
             })
 
@@ -64,7 +64,7 @@ jobs:
               sha: sha,
               state: 'success',
               description: 'Deployment succeeded',
-              context: 'deploy/dev',
+              context: 'deploy/staging',
               target_url: `${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}`
             })
 
@@ -80,6 +80,6 @@ jobs:
               sha: sha,
               state: 'failure',
               description: 'Deployment failed',
-              context: 'deploy/dev',
+              context: 'deploy/staging',
               target_url: `${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}`
             })

@@ -5,7 +5,7 @@ networks:
     name: frontend
 services:
   api:
-    image: ghcr.io/sireto/allure-report-host:${TAG}
+    image: ghcr.io/sireto/allure-report-host:${IMAGE_TAG}
     environment:
       RUST_ENV: production
       VIRTUAL_HOST: https://${STAGING_HOST} -> :8080
