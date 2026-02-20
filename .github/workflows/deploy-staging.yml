@@ -3,7 +3,7 @@ name: Docker Deploy Dev
 on:
   workflow_run:
     workflows: ["Docker Image Build"]
-    branches: [master]
+    branches: [master,main]
     types:
       - completed
   workflow_dispatch:
