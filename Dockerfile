@@ -5,10 +5,6 @@ WORKDIR /app
 COPY api/Cargo.toml api/Cargo.toml
 COPY api/Cargo.lock api/Cargo.lock
 
-RUN mkdir -p api/src && echo "pub fn dummy() {}" > api/src/lib.rs && \
-    echo "fn main() { api::dummy(); }" > api/src/main.rs && \
-    cd api && cargo build --release || true
-
 # Copy the source and build
 COPY api/src api/src
 RUN cd api && cargo build --release
