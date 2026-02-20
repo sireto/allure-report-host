@@ -15,7 +15,9 @@ A self-hosted service for uploading, storing, and viewing Allure 3 test reports 
 
 ## Requirements
 
-- **Test report format:** Upload a `.zip` file containing an `allure-results` folder with Allure-compatible JSON/XML files.  
+- **Test report format:** 
+  - If uploading **directly via the API**, you must upload a `.zip` file containing an `allure-results` folder with Allure-compatible JSON/XML files.
+  - If using the provided **script** or **GitHub Action**, you can provide either the `allure-results` folder or a zipped file; the script will automatically zip the folder for you if needed.
   - Most test frameworks (Playwright, pytest, etc.) can output Allure results.
   - The service generates Allure 3 HTML reports from these results.
 
