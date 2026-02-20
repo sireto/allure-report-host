@@ -1,0 +1,38 @@
+name: 'Publish Allure Report'
+description: 'Uploads an Allure report to the central report host'
+inputs:
+  serverUrl:
+    description: 'API endpoint for report upload'
+    required: true
+  serverApiKey:
+    description: 'API key for authentication'
+    required: true
+  projectName:
+    description: 'Project name'
+    required: true
+  branch:
+    description: 'Branch name'
+    required: true
+  reportName:
+    description: 'Report name'
+    required: true
+  reportType:
+    description: 'Report type (allure/raw)'
+    required: false
+    default: 'allure'
+  path:
+    description: 'Path to allure-results or zip'
+    required: true
+runs:
+  using: "composite"
+  steps:
+    - run: |
+        bash ./scripts/publish-report.sh \
+          --url "${{ inputs.serverUrl }}" \
+          --key "${{ inputs.serverApiKey }}" \
+          "${{ inputs.projectName }}" \
+          "${{ inputs.branch }}" \
+          "${{ inputs.reportName }}" \
+          "${{ inputs.reportType }}" \
+          "${{ inputs.path }}"
+      shell: bash

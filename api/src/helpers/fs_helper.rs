@@ -1,4 +1,4 @@
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use tokio::fs;
 
 /// Recursively finds the directory containing allure result JSON files.
@@ -15,11 +15,11 @@ pub async fn find_results_dir(dir: &PathBuf) -> PathBuf {
             while let Ok(Some(entry)) = entries.next_entry().await {
                 let path = entry.path();
                 if path.is_file() {
-                    if let Some(ext) = path.extension() {
-                        if ext == "json" || ext == "xml" || ext == "txt" {
-                            has_json = true;
-                            break;
-                        }
+                    if let Some(ext) = path.extension()
+                        && (ext == "json" || ext == "xml" || ext == "txt")
+                    {
+                        has_json = true;
+                        break;
                     }
                 } else if path.is_dir() {
                     subdir_count += 1;
@@ -35,9 +35,13 @@ pub async fn find_results_dir(dir: &PathBuf) -> PathBuf {
             return current;
         }
 
-        if subdir_count == 1 && single_subdir.is_some() {
-            println!("Descending into single subfolder: {:?}", single_subdir.as_ref().unwrap());
-            current = single_subdir.unwrap();
+        if subdir_count == 1 {
+            if let Some(subdir) = single_subdir {
+                println!("Descending into single subfolder: {:?}", &subdir);
+                current = subdir;
+            } else {
+                unreachable!("subdir_count == 1 but single_subdir is None");
+            }
         } else {
             break;
         }
@@ -54,16 +58,13 @@ pub async fn next_sequential_id(parent_dir: &PathBuf) -> u32 {
     match tokio::fs::read_dir(parent_dir).await {
         Ok(mut entries) => {
             while let Ok(Some(entry)) = entries.next_entry().await {
-                if let Ok(ft) = entry.file_type().await {
-                    if ft.is_dir() {
-                        if let Some(name) = entry.file_name().to_str() {
-                            if let Ok(id) = name.parse::<u32>() {
-                                if id > max_id {
-                                    max_id = id;
-                                }
-                            }
-                        }
-                    }
+                if let Ok(ft) = entry.file_type().await
+                    && ft.is_dir()
+                    && let Some(name) = entry.file_name().to_str()
+                    && let Ok(id) = name.parse::<u32>()
+                    && id > max_id
+                {
+                    max_id = id;
                 }
             }
         }
@@ -76,36 +77,36 @@ pub async fn next_sequential_id(parent_dir: &PathBuf) -> u32 {
 }
 
 /// Moves all contents from source directory to destination directory
-pub async fn move_directory_contents(source: &PathBuf, dest: &PathBuf) -> Result<(), String> {
+pub async fn move_directory_contents(source: &Path, dest: &Path) -> Result<(), String> {
     let mut entries = fs::read_dir(source)
         .await
         .map_err(|e| format!("Failed to read source directory: {}", e))?;
 
-    while let Some(entry) = entries.next_entry()
+    while let Some(entry) = entries
+        .next_entry()
         .await
-        .map_err(|e| format!("Failed to read entry: {}", e))? 
+        .map_err(|e| format!("Failed to read entry: {}", e))?
     {
         let source_path = entry.path();
-        let file_name = source_path.file_name()
-            .ok_or("Invalid file name")?;
+        let file_name = source_path.file_name().ok_or("Invalid file name")?;
         let dest_path = dest.join(file_name);
 
         if dest_path.exists() {
             if dest_path.is_dir() {
-                fs::remove_dir_all(&dest_path)
-                    .await
-                    .map_err(|e| format!("Failed to remove existing directory {:?}: {}", dest_path, e))?;
+                fs::remove_dir_all(&dest_path).await.map_err(|e| {
+                    format!("Failed to remove existing directory {:?}: {}", dest_path, e)
+                })?;
             } else {
-                fs::remove_file(&dest_path)
-                    .await
-                    .map_err(|e| format!("Failed to remove existing file {:?}: {}", dest_path, e))?;
+                fs::remove_file(&dest_path).await.map_err(|e| {
+                    format!("Failed to remove existing file {:?}: {}", dest_path, e)
+                })?;
             }
         }
 
         fs::rename(&source_path, &dest_path)
             .await
             .map_err(|e| format!("Failed to move {:?} to {:?}: {}", source_path, dest_path, e))?;
-            
+
         println!("Moved {:?} to {:?}", source_path, dest_path);
     }
 

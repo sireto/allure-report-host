@@ -1,12 +1,12 @@
-use std::path::PathBuf;
+use std::path::Path;
 use std::process::Command;
 
 /// Runs `npx allure generate` with the given input/output directories.
 /// `config_dir` is used as the working directory so allurerc.json is found.
 pub fn generate_report(
-    input_dir: &PathBuf,
-    output_dir: &PathBuf,
-    config_dir: &PathBuf,
+    input_dir: &Path,
+    output_dir: &Path,
+    config_dir: &Path,
 ) -> Result<String, String> {
     let input_str = input_dir.to_string_lossy().to_string();
     let output_str = output_dir.to_string_lossy().to_string();
@@ -16,8 +16,7 @@ pub fn generate_report(
     println!("Allure output (absolute): {}", output_str);
     println!("Allure cwd (config dir): {}", config_str);
 
-    let output = Command::new("npx")
-        .arg("allure")
+    let output = Command::new("allure")
         .arg("generate")
         .arg(&input_str)
         .arg("-o")
@@ -25,7 +24,7 @@ pub fn generate_report(
         .arg("--cwd")
         .arg(&config_str)
         .output()
-        .map_err(|e| format!("Failed to run npx command: {}", e))?;
+        .map_err(|e| format!("Failed to run allure command: {}", e))?;
 
     let stdout_str = String::from_utf8_lossy(&output.stdout).to_string();
     let stderr_str = String::from_utf8_lossy(&output.stderr).to_string();
@@ -42,11 +41,7 @@ pub fn generate_report(
 
 /// Copies history.jsonl from parent_dir into the input directory,
 /// and after generation copies it back from wherever allure wrote it.
-pub async fn sync_history(
-    parent_dir: &PathBuf,
-    input_dir: &PathBuf,
-    _output_dir: &PathBuf,
-) {
+pub async fn sync_history(parent_dir: &Path, input_dir: &Path, _output_dir: &Path) {
     let parent_history = parent_dir.join("history.jsonl");
     let input_history = input_dir.join("history.jsonl");
 
@@ -59,11 +54,7 @@ pub async fn sync_history(
     }
 }
 
-pub async fn collect_history(
-    parent_dir: &PathBuf,
-    input_dir: &PathBuf,
-    output_dir: &PathBuf,
-) {
+pub async fn collect_history(parent_dir: &Path, input_dir: &Path, output_dir: &Path) {
     let parent_history = parent_dir.join("history.jsonl");
 
     // Check input dir first (allure may update in-place)
@@ -86,5 +77,7 @@ pub async fn collect_history(
         return;
     }
 
-    eprintln!("WARNING: history.jsonl was NOT created anywhere. Allure CLI may not support this config option.");
+    eprintln!(
+        "WARNING: history.jsonl was NOT created anywhere. Allure CLI may not support this config option."
+    );
 }

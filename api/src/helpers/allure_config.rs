@@ -1,11 +1,13 @@
-use std::path::PathBuf;
 use serde_json::json;
+use std::path::PathBuf;
 
-pub async fn ensure_allure_config(parent_dir: &PathBuf, _report_name: &str) -> Result<PathBuf, String> {
+pub async fn ensure_allure_config(
+    parent_dir: &PathBuf,
+    _report_name: &str,
+) -> Result<PathBuf, String> {
     let config_path = parent_dir.join("allurerc.json");
 
-    let abs_parent = std::fs::canonicalize(parent_dir)
-        .unwrap_or_else(|_| parent_dir.clone());
+    let abs_parent = std::fs::canonicalize(parent_dir).unwrap_or_else(|_| parent_dir.clone());
     let history_abs = abs_parent.join("history.jsonl");
 
     let config_content = json!({
@@ -20,6 +22,9 @@ pub async fn ensure_allure_config(parent_dir: &PathBuf, _report_name: &str) -> R
         .await
         .map_err(|e| format!("Failed to write allurerc.json: {}", e))?;
 
-    println!("Wrote allurerc.json at {:?} with historyPath={:?}", config_path, history_abs);
+    println!(
+        "Wrote allurerc.json at {:?} with historyPath={:?}",
+        config_path, history_abs
+    );
     Ok(config_path)
 }

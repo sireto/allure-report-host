@@ -1,0 +1,21 @@
+version: '3.8'
+
+services:
+  api:
+    image: ${IMAGE}:${TAG}
+    ports:
+      - "8088:8088"
+    environment:
+      RUST_ENV: ${RUST_ENV}
+      API_KEY: ${API_KEY}
+      DATA_DIR: /opt/allure-data
+    volumes:
+      - allure-data:/opt/allure-data
+    deploy:
+      replicas: 1
+      restart_policy:
+        condition: on-failure
+
+volumes:
+  allure-data:
+    driver: local

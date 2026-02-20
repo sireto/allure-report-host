@@ -1,5 +1,5 @@
-use std::path::PathBuf;
 use std::io::Cursor;
+use std::path::PathBuf;
 use zip::ZipArchive;
 
 /// Extracts a zip archive, stripping a common top-level directory if all entries share one.
@@ -20,14 +20,10 @@ pub fn extract_zip(zip_bytes: Vec<u8>, target_dir: PathBuf) -> Result<usize, Str
 
         // Strip only the first component if it matches the common prefix
         let stripped_path = if let Some(ref prefix) = common_prefix {
-            if let Some(first_component) = raw_path.components().next() {
-                if let std::path::Component::Normal(s) = first_component {
-                    if s.to_string_lossy() == *prefix {
-                        // Remove only the first component
-                        raw_path.components().skip(1).collect::<PathBuf>()
-                    } else {
-                        raw_path.clone()
-                    }
+            if let Some(std::path::Component::Normal(s)) = raw_path.components().next() {
+                if s.to_string_lossy() == *prefix {
+                    // Remove only the first component
+                    raw_path.components().skip(1).collect::<PathBuf>()
                 } else {
                     raw_path.clone()
                 }
@@ -47,10 +43,10 @@ pub fn extract_zip(zip_bytes: Vec<u8>, target_dir: PathBuf) -> Result<usize, Str
         if file.name().ends_with('/') {
             std::fs::create_dir_all(&outpath).map_err(|e| e.to_string())?;
         } else {
-            if let Some(p) = outpath.parent() {
-                if !p.exists() {
-                    std::fs::create_dir_all(p).map_err(|e| e.to_string())?;
-                }
+            if let Some(p) = outpath.parent()
+                && !p.exists()
+            {
+                std::fs::create_dir_all(p).map_err(|e| e.to_string())?;
             }
             let mut outfile = std::fs::File::create(&outpath).map_err(|e| e.to_string())?;
             std::io::copy(&mut file, &mut outfile).map_err(|e| e.to_string())?;
@@ -60,13 +56,15 @@ pub fn extract_zip(zip_bytes: Vec<u8>, target_dir: PathBuf) -> Result<usize, Str
     Ok(archive.len())
 }
 
-fn detect_common_prefix(archive: &mut ZipArchive<Cursor<Vec<u8>>>) -> Result<Option<String>, String> {
+fn detect_common_prefix(
+    archive: &mut ZipArchive<Cursor<Vec<u8>>>,
+) -> Result<Option<String>, String> {
     let mut prefix: Option<String> = None;
 
     for i in 0..archive.len() {
         let file = archive.by_index(i).map_err(|e| e.to_string())?;
         let name = file.name().to_string();
-        
+
         // Get the first path component only
         let first_component = name.split('/').next().unwrap_or("").to_string();
 

@@ -1,5 +1,11 @@
+use api::handlers::manifest::get_manifest;
 use axum::{
-    Json, Router, extract::{DefaultBodyLimit, Request}, http::{HeaderMap, StatusCode}, middleware::{self, Next}, response::Response, routing::get
+    Json, Router,
+    extract::{DefaultBodyLimit, Request},
+    http::{HeaderMap, StatusCode},
+    middleware::{self, Next},
+    response::Response,
+    routing::get,
 };
 use dotenvy::dotenv;
 use serde_json::json;
@@ -7,15 +13,14 @@ use std::env;
 use std::net::SocketAddr;
 use tower_http::services::ServeDir;
 use utoipa::{
-    openapi::security::{ApiKey, ApiKeyValue, SecurityScheme},
     OpenApi,
+    openapi::security::{ApiKey, ApiKeyValue, SecurityScheme},
 };
 use utoipa_swagger_ui::SwaggerUi;
 
 #[derive(OpenApi)]
 #[openapi(
     paths(
-        root,
         api::handlers::report_handler::upload_report
     ),
     components(
@@ -48,7 +53,9 @@ const MAX_UPLOAD_SIZE_MB: usize = MAX_UPLOAD_SIZE_BYTES / (1024 * 1024);
 
 #[tokio::main]
 async fn main() {
-    dotenv().ok();
+    if env::var("RUST_ENV").unwrap_or_default() != "production" {
+        dotenv().ok();
+    }
 
     if env::var("API_KEY").is_err() || env::var("API_KEY").unwrap().is_empty() {
         panic!("CRITICAL ERROR: API_KEY environment variable is not set or is empty.");
@@ -64,15 +71,13 @@ async fn main() {
         .layer(middleware::from_fn(check_content_length))
         .layer(DefaultBodyLimit::max(MAX_UPLOAD_SIZE_BYTES));
 
-    let public_routes = Router::new()
-        .route("/", get(root));
+    let public_routes = Router::new().route("/manifest.json", get(get_manifest));
 
-    let swagger_routes = SwaggerUi::new("/swagger-ui")
-        .url("/api-docs/openapi.json", ApiDoc::openapi());
+    let swagger_routes =
+        SwaggerUi::new("/swagger-ui").url("/api-docs/openapi.json", ApiDoc::openapi());
 
     // Serve static reports without authentication
-    let static_reports = Router::new()
-        .nest_service("/", ServeDir::new(&data_dir));
+    let static_reports = Router::new().nest_service("/", ServeDir::new(&data_dir));
 
     let app = Router::new()
         .merge(swagger_routes)
@@ -93,25 +98,23 @@ async fn check_content_length(
     request: Request,
     next: Next,
 ) -> Result<Response, (StatusCode, Json<serde_json::Value>)> {
-    if let Some(content_length) = headers.get("content-length") {
-        if let Ok(length_str) = content_length.to_str() {
-            if let Ok(length) = length_str.parse::<u64>() {
-                if length > MAX_UPLOAD_SIZE_BYTES as u64 {
-                    let size_mb = length / (1024 * 1024);
-                    let error_response = json!({
-                        "error": format!(
-                            "File size exceeds maximum limit of {}MB (received: {}MB)",
-                            MAX_UPLOAD_SIZE_MB, size_mb
-                        ),
-                        "max_size_bytes": MAX_UPLOAD_SIZE_BYTES,
-                        "max_size_mb": MAX_UPLOAD_SIZE_MB,
-                        "received_bytes": length,
-                        "received_mb": size_mb
-                    });
-                    return Err((StatusCode::PAYLOAD_TOO_LARGE, Json(error_response)));
-                }
-            }
-        }
+    if let Some(content_length) = headers.get("content-length")
+        && let Ok(length_str) = content_length.to_str()
+        && let Ok(length) = length_str.parse::<u64>()
+        && length > MAX_UPLOAD_SIZE_BYTES as u64
+    {
+        let size_mb = length / (1024 * 1024);
+        let error_response = json!({
+            "error": format!(
+                "File size exceeds maximum limit of {}MB (received: {}MB)",
+                MAX_UPLOAD_SIZE_MB, size_mb
+            ),
+            "max_size_bytes": MAX_UPLOAD_SIZE_BYTES,
+            "max_size_mb": MAX_UPLOAD_SIZE_MB,
+            "received_bytes": length,
+            "received_mb": size_mb
+        });
+        return Err((StatusCode::PAYLOAD_TOO_LARGE, Json(error_response)));
     }
 
     Ok(next.run(request).await)
@@ -124,19 +127,4 @@ async fn auth(headers: HeaderMap, request: Request, next: Next) -> Result<Respon
         Some(key) if key.to_str().unwrap_or_default() == api_key => Ok(next.run(request).await),
         _ => Err(StatusCode::UNAUTHORIZED),
     }
-}
-
-#[utoipa::path(
-    get,
-    path = "/",
-    responses(
-        (status = 200, description = "Welcome message", body = String),
-        (status = 401, description = "Unauthorized")
-    ),
-    security(
-        ("api_key" = [])
-    )
-)]
-async fn root() -> &'static str {
-    "Hello, Devs! Welcome to the Allure Report Host API."
 }
