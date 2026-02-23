@@ -26,6 +26,9 @@ inputs:
   githubToken:
     description: 'GitHub token for setting commit status'
     required: false
+  testResult:
+    description: 'Test result exit code (0=success, nonzero=failure)'
+    required: false 
 runs:
   using: "composite"
   steps:
@@ -33,6 +36,7 @@ runs:
         bash ./scripts/publish-report.sh \
           --url "${{ inputs.serverUrl }}" \
           --key "${{ inputs.serverApiKey }}" \
+          --github-token "${{ inputs.githubToken }}" \
           "${{ inputs.projectName }}" \
           "${{ inputs.branch }}" \
           "${{ inputs.reportName }}" \
