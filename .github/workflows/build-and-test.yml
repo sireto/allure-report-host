@@ -50,8 +50,13 @@ jobs:
         id: run_tests
         run: |
           set +e
-          cargo test --all-targets --all-features
-          echo "exit_code=$?" >> $GITHUB_OUTPUT
+          cargo test --all-targets --all-features | tee test_output.txt
+          exit_code=${PIPESTATUS[0]}
+          passed=$(grep -oP 'test result: ok.*?(\d+) passed' test_output.txt | grep -oP '\d+')
+          failed=$(grep -oP 'test result: FAILED.*?(\d+) failed' test_output.txt | grep -oP '\d+')
+          echo "exit_code=$exit_code" >> $GITHUB_OUTPUT
+          echo "passed=${passed:-0}" >> $GITHUB_OUTPUT
+          echo "failed=${failed:-0}" >> $GITHUB_OUTPUT
         env:
           API_SECRET: test-api-key
           DATA_DIR: ../data
@@ -79,3 +84,5 @@ jobs:
           path: ./allure-results
           githubToken: ${{ secrets.GITHUB_TOKEN }}
           testResult: ${{ steps.run_tests.outputs.exit_code }}
+          testsPassed: ${{ steps.run_tests.outputs.passed }}
+          testsFailed: ${{ steps.run_tests.outputs.failed }}

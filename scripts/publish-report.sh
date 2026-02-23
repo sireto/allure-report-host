@@ -18,6 +18,8 @@ EOF
 
 dry_run=0
 verbose=0
+tests_passed=""
+tests_failed=""
 
 while [[ $# -gt 0 ]]; do
     case "$1" in
@@ -28,6 +30,8 @@ while [[ $# -gt 0 ]]; do
         --key) REPORT_API_SECRET="$2"; shift 2 ;;
         --github-token) GITHUB_TOKEN="$2"; shift 2 ;;
         --test-result) test_result="$2"; shift 2 ;;
+        --tests-passed) tests_passed="$2"; shift 2 ;;
+        --tests-failed) tests_failed="$2"; shift 2 ;;
         *) break ;;
     esac
 done
@@ -127,7 +131,13 @@ if (( http_code >= 200 && http_code < 300 )); then
       commit_sha="${GITHUB_SHA:-$(git rev-parse HEAD)}"
       context="${report_name}"
       target_url="${SERVER_URL}/${project_name}/${branch}/${report_name}/index.html"
-      description="Allure report for this build"
+      
+      if [[ -n "$tests_passed" && -n "$tests_failed" ]]; then
+        description="Passed $tests_passed, Failed $tests_failed"
+      else
+        description="Allure report for this build"
+      fi
+      
       if [[ -n "$test_result" ]]; then
         if [[ "$test_result" == "0" ]]; then
           state="success"

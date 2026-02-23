@@ -29,6 +29,12 @@ inputs:
   testResult:
     description: 'Test result exit code (0=success, nonzero=failure)'
     required: false 
+  testsPassed:
+    description: 'Number of passed tests'
+    required: false
+  testsFailed:
+    description: 'Number of failed tests'
+    required: false
 runs:
   using: "composite"
   steps:
@@ -37,6 +43,9 @@ runs:
           --url "${{ inputs.serverUrl }}" \
           --key "${{ inputs.serverApiKey }}" \
           --github-token "${{ inputs.githubToken }}" \
+          --test-result "${{ inputs.testResult }}" \
+          --test-passed "${{ inputs.testsPassed }}" \
+          --test-failed "${{ inputs.testsFailed }}" \
           "${{ inputs.projectName }}" \
           "${{ inputs.branch }}" \
           "${{ inputs.reportName }}" \
