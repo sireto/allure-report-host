@@ -25,9 +25,8 @@ use utoipa_swagger_ui::SwaggerUi;
     ),
     components(
         schemas(
-            api::models::report::CreateReportRequest,
-            api::models::report::ReportResponse,
-            api::models::report::ReportType
+            api::models::report::ReportType,
+            api::models::report::FileUploadRequest
         )
     ),
     modifiers(&SecurityAddon),

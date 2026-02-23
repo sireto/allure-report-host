@@ -6,7 +6,21 @@ use utoipa::ToSchema;
 pub enum ReportType {
     Allure,
     Raw,
-    Other,
+}
+
+#[derive(ToSchema)]
+#[allow(dead_code)]
+pub struct FileUploadRequest {
+    #[schema(example = "my-project")]
+    project_name: String,
+    #[schema(example = "qa")]
+    branch: String,
+    #[schema(example = "daily-test")]
+    report_name: String,
+    #[schema(default = "allure", example = "allure")]
+    r#type: Option<ReportType>,
+    #[schema(value_type = String, format = Binary)]
+    file: Vec<u8>,
 }
 
 #[derive(Debug, Serialize, Deserialize, ToSchema, Clone)]
