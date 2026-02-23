@@ -5,8 +5,8 @@
 set -euo pipefail
 
 # Configuration
-: "${REPORT_API_URL:=}"
-: "${REPORT_API_KEY:=}"
+: "${SERVER_URL:=}"
+: "${REPORT_API_SECRET:=}"
 : "${MAX_FILE_SIZE_MB:=500}"
 
 usage() {
@@ -24,8 +24,8 @@ while [[ $# -gt 0 ]]; do
         --help|-h) usage; exit 0 ;;
         --dry-run) dry_run=1; shift ;;
         --verbose|-v) verbose=1; shift ;;
-        --url) REPORT_API_URL="$2"; shift 2 ;;
-        --key) REPORT_API_KEY="$2"; shift 2 ;;
+        --url) SERVER_URL="$2"; shift 2 ;;
+        --key) REPORT_API_SECRET="$2"; shift 2 ;;
         *) break ;;
     esac
 done
@@ -67,13 +67,13 @@ if (( file_size_mb > MAX_FILE_SIZE_MB )); then
     exit 1
 fi
 
-if [[ -z "$REPORT_API_URL" ]]; then
-    echo "Error: REPORT_API_URL not set. Use --url or env var" >&2
+if [[ -z "$SERVER_URL" ]]; then
+    echo "Error: SERVER_URL not set. Use --url or env var" >&2
     exit 1
 fi
 
 curl_args=(
-    -X POST "$REPORT_API_URL"
+    -X POST "$SERVER_URL/api/reports/upload"
     -F "project_name=$project_name"
     -F "branch=$branch"
     -F "report_name=$report_name"
@@ -82,12 +82,12 @@ curl_args=(
     --progress-bar
 )
 
-[[ -n "$REPORT_API_KEY" ]] && curl_args+=(-H "X-API-Key: $REPORT_API_KEY")
+[[ -n "$REPORT_API_SECRET" ]] && curl_args+=(-H "X-API-Key: $REPORT_API_SECRET")
 [[ $verbose -eq 1 ]] && curl_args+=(-v)
 
 # Summary
 echo "Publishing report:"
-echo "  URL:           $REPORT_API_URL"
+echo "  URL:           $SERVER_URL"
 echo "  Project:       $project_name"
 echo "  Branch:        $branch"
 echo "  Report name:   $report_name"
@@ -124,7 +124,7 @@ if (( http_code >= 200 && http_code < 300 )); then
     if [[ -n "${GITHUB_TOKEN:-}" ]]; then
       commit_sha="${GITHUB_SHA:-$(git rev-parse HEAD)}"
       context="Allure Report"
-      target_url="https://reports.sireto.io/${project_name}/${branch}/${report_name}/index.html"
+      target_url="${SERVER_URL}/${project_name}/${branch}/${report_name}/index.html"
       description="Allure report for this build"
       state="success"
 

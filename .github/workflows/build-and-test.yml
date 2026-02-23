@@ -67,7 +67,7 @@ jobs:
         if: steps.allure_results.outputs.exists == 'true'
         uses: sireto/allure-report-host@v1
         with:
-          serverUrl: 'https://reports.sireto.io/api/reports/upload'
+          serverUrl: ${{ secrets.STAGING_SERVER_URL }}
           serverApiKey: ${{ secrets.API_KEY }}
           projectName: ${{ github.repository }}
           branch: ${{ github.ref_name }}

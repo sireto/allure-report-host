@@ -9,10 +9,10 @@ services:
     environment:
       RUST_ENV: production
       VIRTUAL_HOST: https://${STAGING_HOST} -> :8080
-      API_SECRET: ${API_SECRET} # api-secret for build report publication
-      DATA_DIR: /data
+      API_SECRET: ${API_SECRET} # api-secret to build report publication
+      DATA_DIR: /app/data
     volumes:
-      - data:/data
+      - data:/app/data
     deploy:
       replicas: 1
       placement:
