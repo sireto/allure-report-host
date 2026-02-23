@@ -54,9 +54,9 @@ jobs:
           exit_code=${PIPESTATUS[0]}
           passed=$(grep -oP 'test result: ok.*?(\d+) passed' test_output.txt | grep -oP '\d+')
           failed=$(grep -oP 'test result: FAILED.*?(\d+) failed' test_output.txt | grep -oP '\d+')
-          echo "exit_code=${exit_code:-1}" | tee -a $GITHUB_OUTPUT
-          echo "passed=${passed:-0}" | tee -a $GITHUB_OUTPUT
-          echo "failed=${failed:-0}" | tee -a $GITHUB_OUTPUT
+          echo "exit_code=${exit_code:-1}" >> $GITHUB_OUTPUT
+          echo "passed=${passed:-0}" >> $GITHUB_OUTPUT
+          echo "failed=${failed:-0}" >> $GITHUB_OUTPUT
         env:
           API_SECRET: test-api-key
           DATA_DIR: ../data
