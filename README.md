@@ -36,7 +36,7 @@ Add this step to your workflow after your tests:
 ```yaml
 - uses: sireto/allure-report-host@v1
   with:
-    serverUrl: 'https://reports.sireto.io/api/reports/upload'
+    serverUrl: ${{ secrets.STAGING_SERVER_URL }}
     serverApiKey: ${{ secrets.REPORT_API_KEY }}
     projectName: my-app
     branch: ${{ github.ref_name }}
