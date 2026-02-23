@@ -74,7 +74,7 @@ jobs:
 
       - name: Publish Allure Report and Set Commit Status
         if: steps.allure_results.outputs.exists == 'true'
-        uses: sireto/allure-report-host@v1
+        uses: sireto/allure-report-host@v1.1
         with:
           serverUrl: ${{ secrets.STAGING_SERVER_URL }}
           serverApiKey: ${{ secrets.API_KEY }}
