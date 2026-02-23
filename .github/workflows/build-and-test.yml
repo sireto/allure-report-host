@@ -47,7 +47,11 @@ jobs:
         run: cargo build --release
 
       - name: Run tests
-        run: cargo test --all-targets --all-features
+        id: run_tests
+        run: |
+          set +e
+          cargo test --all-targets --all-features
+          echo "exit_code=$?" >> $GITHUB_OUTPUT
         env:
           API_SECRET: test-api-key
           DATA_DIR: ../data
@@ -74,3 +78,4 @@ jobs:
           reportName: ${{ github.run_id }}
           path: ./allure-results
           githubToken: ${{ secrets.GITHUB_TOKEN }}
+          testResult: ${{ steps.run_tests.outputs.exit_code }}

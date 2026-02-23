@@ -26,6 +26,8 @@ while [[ $# -gt 0 ]]; do
         --verbose|-v) verbose=1; shift ;;
         --url) SERVER_URL="$2"; shift 2 ;;
         --key) REPORT_API_SECRET="$2"; shift 2 ;;
+        --github-token) GITHUB_TOKEN="$2"; shift 2 ;;
+        --test-result) test_result="$2"; shift 2 ;;
         *) break ;;
     esac
 done
@@ -123,10 +125,18 @@ if (( http_code >= 200 && http_code < 300 )); then
 
     if [[ -n "${GITHUB_TOKEN:-}" ]]; then
       commit_sha="${GITHUB_SHA:-$(git rev-parse HEAD)}"
-      context="Allure Report"
+      context="${report_name}"
       target_url="${SERVER_URL}/${project_name}/${branch}/${report_name}/index.html"
       description="Allure report for this build"
-      state="success"
+      if [[ -n "$test_result" ]]; then
+        if [[ "$test_result" == "0" ]]; then
+          state="success"
+        else
+          state="failure"
+        fi
+      else
+        state="success"
+      fi
 
       curl -s -X POST \
         -H "Authorization: token ${GITHUB_TOKEN}" \
