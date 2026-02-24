@@ -33,6 +33,9 @@ pub mod helpers {
 
     #[path = "allure_generator.rs"]
     pub mod allure_generator;
+
+    #[path = "access_control.rs"]
+    pub mod access_control;
 }
 
 pub mod route;
