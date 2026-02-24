@@ -50,10 +50,10 @@ jobs:
         id: run_tests
         run: |
           set +e
-          cargo test --all-targets --all-features | tee test_output.txt
+          cargo test --all-targets --all-features 2>&1 | tee test_output.txt
           exit_code=${PIPESTATUS[0]}
-          passed=$(grep -oP 'test result: ok.*?(\d+) passed' test_output.txt | grep -oP '\d+')
-          failed=$(grep -oP 'test result: FAILED.*?(\d+) failed' test_output.txt | grep -oP '\d+')
+          passed=$(grep -oP 'test result: ok\. \K\d+(?= passed)' test_output.txt | tail -1)
+          failed=$(grep -oP 'test result: (ok|FAILED)\. \d+ passed; \K\d+(?= failed)' test_output.txt | tail -1)
           echo "exit_code=${exit_code:-1}" >> $GITHUB_OUTPUT
           echo "passed=${passed:-0}" >> $GITHUB_OUTPUT
           echo "failed=${failed:-0}" >> $GITHUB_OUTPUT
