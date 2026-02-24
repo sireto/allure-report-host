@@ -36,8 +36,8 @@ Add this step to your workflow after your tests:
 ```yaml
 - uses: sireto/allure-report-host@v1
   with:
-    serverUrl: ${{ secrets.STAGING_SERVER_URL }}
-    serverApiKey: ${{ secrets.REPORT_API_KEY }}
+    serverUrl: ${{ vars.SERVER_URL }}
+    serverApiKey: ${{ secrets.REPORT_API_SECRET }}
     projectName: my-app
     branch: ${{ github.ref_name }}
     reportName: nightly-${{ github.run_id }}
