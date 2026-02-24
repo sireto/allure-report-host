@@ -24,7 +24,7 @@ WORKDIR /app
 
 COPY --from=builder /app/api/target/release/api /app/api
 COPY scripts/ /app/scripts/
-COPY data/ /app/data/
+COPY data/ /data/
 
 RUN chmod +x /app/scripts/*.sh
 
