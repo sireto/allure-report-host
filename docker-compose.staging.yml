@@ -8,7 +8,7 @@ services:
     image: ghcr.io/sireto/allure-report-host:${IMAGE_TAG}
     environment:
       RUST_ENV: production
-      VIRTUAL_HOST: https://${STAGING_HOST} -> :8080
+      VIRTUAL_HOST: https://${STAGING_HOST} -> :8080; client_max_body_size 1G;
       API_SECRET: ${API_SECRET} # api-secret to publish build report
       DATA_DIR: /data
     volumes:
