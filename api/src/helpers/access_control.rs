@@ -49,10 +49,10 @@ impl AccessControl {
         if nets.iter().any(|n| n.contains(&ip)) {
             return true;
         }
-        if let IpAddr::V6(v6) = ip {
-            if let Some(v4) = v6.to_ipv4_mapped() {
-                return nets.iter().any(|n| n.contains(&IpAddr::V4(v4)));
-            }
+        if let IpAddr::V6(v6) = ip
+            && let Some(v4) = v6.to_ipv4_mapped()
+        {
+            return nets.iter().any(|n| n.contains(&IpAddr::V4(v4)));
         }
         false
     }
