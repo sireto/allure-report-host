@@ -1,4 +1,5 @@
 use api::handlers::manifest::get_manifest;
+use api::helpers::access_control::{AccessControl, access_control};
 use axum::{
     Json, Router,
     extract::{DefaultBodyLimit, Request},
@@ -11,6 +12,7 @@ use dotenvy::dotenv;
 use serde_json::json;
 use std::env;
 use std::net::SocketAddr;
+use std::sync::Arc;
 use tower_http::services::ServeDir;
 use utoipa::{
     OpenApi,
@@ -64,6 +66,22 @@ async fn main() {
 
     let data_dir = env::var("DATA_DIR").unwrap_or_else(|_| "../data".to_string());
 
+    let allowed_proxies: Vec<String> = std::env::var("PROXY_ALLOWED_IPS")
+        .unwrap_or_default()
+        .split(',')
+        .map(|s| s.trim().to_string())
+        .filter(|s| !s.is_empty())
+        .collect();
+
+    let allowed_ips: Vec<String> = std::env::var("ALLOWED_IPS")
+        .unwrap_or_default()
+        .split(',')
+        .map(|s| s.trim().to_string())
+        .filter(|s| !s.is_empty())
+        .collect();
+
+    let ac = Arc::new(AccessControl::new(allowed_ips, allowed_proxies));
+
     let api_routes = Router::new()
         .nest("/api", api::route::create_api_router())
         .route_layer(middleware::from_fn(auth))
@@ -75,8 +93,9 @@ async fn main() {
     let swagger_routes =
         SwaggerUi::new("/swagger-ui").url("/api-docs/openapi.json", ApiDoc::openapi());
 
-    // Serve static reports without authentication
-    let static_reports = Router::new().nest_service("/", ServeDir::new(&data_dir));
+    let static_reports = Router::new()
+        .nest_service("/", ServeDir::new(&data_dir))
+        .layer(middleware::from_fn_with_state(ac.clone(), access_control));
 
     let app = Router::new()
         .merge(swagger_routes)
@@ -88,7 +107,12 @@ async fn main() {
     println!("Listening on {}", addr);
     println!("Max upload size: {}MB", MAX_UPLOAD_SIZE_MB);
     let listener = tokio::net::TcpListener::bind(addr).await.unwrap();
-    axum::serve(listener, app).await.unwrap();
+    axum::serve(
+        listener,
+        app.into_make_service_with_connect_info::<SocketAddr>(),
+    )
+    .await
+    .unwrap();
 }
 
 /// Middleware to check Content-Length before processing the request
