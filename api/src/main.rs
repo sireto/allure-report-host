@@ -66,7 +66,7 @@ async fn main() {
 
     let data_dir = env::var("DATA_DIR").unwrap_or_else(|_| "../data".to_string());
 
-    let allowed_proxies: Vec<String> = std::env::var("PROXY_ALLOWED_IPS")
+    let allowed_proxies: Vec<String> = std::env::var("ALLOWED_PROXY_IPS")
         .unwrap_or_default()
         .split(',')
         .map(|s| s.trim().to_string())
