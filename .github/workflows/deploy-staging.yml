@@ -52,6 +52,8 @@ jobs:
           COMMIT_SHA: ${{ github.event_name == 'workflow_dispatch' && github.sha || github.event.workflow_run.head_sha }}
           IMAGE_TAG: ${{ github.event_name == 'workflow_dispatch' && github.sha || github.event.workflow_run.head_sha }}
           DEPLOYMENT_NAME: staging
+          ALLOWED_PROXY_IPS: ${{ vars.STAGING_ALLOWED_PROXY_IPS }}
+          ALLOWED_IPS: ${{ vars.STAGING_ALLOWED_IPS }}
 
       - name: Set commit status to success
         if: success()

@@ -11,6 +11,8 @@ services:
       VIRTUAL_HOST: https://${STAGING_HOST} -> :8080; client_max_body_size 1G;
       API_SECRET: ${API_SECRET} # api-secret to publish build report
       DATA_DIR: /data
+      ALLOWED_PROXY_IPS: ${ALLOWED_PROXY_IPS}
+      ALLOWED_IPS: ${ALLOWED_IPS}
     volumes:
       - data:/data
     deploy:
