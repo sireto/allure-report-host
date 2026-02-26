@@ -1,4 +1,5 @@
 name: 'Publish Allure Report'
+id: upload-allure
 description: 'Uploads an Allure report to the central report host'
 inputs:
   serverUrl:
@@ -46,29 +47,59 @@ runs:
           "${{ inputs.path }}"
       shell: bash
 
-    - name: Set commit status
-      if: ${{ secrets.GITHUB_TOKEN != '' }}
+    - name: Publish Allure Report
+      timeout-minutes: 12
+      continue-on-error: true
+      env:
+        API_SECRET:   ${{ secrets.API_KEY }}
+        SERVER_URL:   ${{ vars.STAGING_SERVER_URL }}
+
+      uses: sireto/allure-report-host@v1.2
+      with:
+        path: ./allure-results
+
+    - name: Update Check Run with Allure Summary
+      if: always()
+      timeout-minutes: 2
+      env:
+        GH_TOKEN: ${{ github.token }}
       run: |
-        commit_sha="${GITHUB_SHA:-$(git rev-parse HEAD)}"
-        context="${{ inputs.reportName }}"
-        target_url="${{ inputs.serverUrl }}/${{ inputs.projectName }}/${{ inputs.branch }}/${{ inputs.reportName }}/index.html"
-        if [[ -n "${{ inputs.testsPassed }}" && -n "${{ inputs.testsFailed }}" ]]; then
-          description="Passed ${{ inputs.testsPassed }}, Failed ${{ inputs.testsFailed }}"
-        else
-          description="Allure report for this build"
+        # Try to find the check run for this job
+        CHECK_RUN_ID=$(gh api \
+          -H "Accept: application/vnd.github+json" \
+          "/repos/${GITHUB_REPOSITORY}/commits/${GITHUB_SHA}/check-runs?check_name=${GITHUB_JOB}" \
+          --jq '.check_runs[] | select(.status == "in_progress" or .status == "queued") | .id' \
+          | head -n 1 || echo "")
+        if [[ -z "$CHECK_RUN_ID" ]]; then
+          echo "::warning::Could not find active check run ID – skipping summary update"
+          exit 0
         fi
-        if [[ -n "${{ inputs.testResult }}" ]]; then
-          if [[ "${{ inputs.testResult }}" == "0" ]]; then
-            state="success"
-          else
-            state="failure"
-          fi
+
+        # Determine outcome
+        UPLOAD_OUTCOME="${{ steps.upload-allure.outcome || 'timeout' }}"
+        if [[ "$UPLOAD_OUTCOME" == "success" ]]; then
+          STATE="success"
+          STATUS_TEXT="Upload completed"
+        elif [[ "$UPLOAD_OUTCOME" == "timeout" || "$UPLOAD_OUTCOME" == "failure" ]]; then
+          STATE="timed_out"
+          STATUS_TEXT="Upload timed out or failed"
         else
-          state="success"
+          STATE="neutral"
+          STATUS_TEXT="Upload status unknown"
         fi
-        curl -s -X POST \
-          -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
-          -H "Content-Type: application/json" \
-          -d "{\"state\": \"${state}\", \"target_url\": \"${target_url}\", \"description\": \"${description}\", \"context\": \"${context}\"}" \
-          "https://api.github.com/repos/${GITHUB_REPOSITORY}/statuses/${commit_sha}"
+
+        SUMMARY="**Allure Report**\n\
+        Status: $STATUS_TEXT\n\
+        Passed: ${{ steps.run_tests.outputs.passed || 'unknown' }}\n\
+        Failed: ${{ steps.run_tests.outputs.failed || 'unknown' }}\n\
+        [View Report (if successful)](${{ vars.STAGING_SERVER_URL }}/${{ github.repository }}/${{ github.ref_name }}/${{ github.run_id }}/index.html)"
+
+        gh api \
+          --method PATCH \
+          -H "Accept: application/vnd.github+json" \
+          "/repos/${GITHUB_REPOSITORY}/check-runs/$CHECK_RUN_ID" \
+          -f "status=completed" \
+          -f "conclusion=$STATE" \
+          -f "output[title]=Allure Report" \
+          -f "output[summary]=$SUMMARY" || echo "::warning::Failed to update check summary"
       shell: bash
