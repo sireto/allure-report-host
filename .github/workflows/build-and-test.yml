@@ -74,6 +74,7 @@ jobs:
 
       - name: Publish Allure Report and Set Commit Status
         continue-on-error: true
+        timeout-minutes: 10
         env:
           API_SECRET: ${{ secrets.API_KEY }}
           SERVER_URL: ${{ vars.STAGING_SERVER_URL }}
