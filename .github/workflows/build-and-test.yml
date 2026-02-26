@@ -73,7 +73,11 @@ jobs:
         run: echo "exists=$(if [ -d ./allure-results ]; then echo true; else echo false; fi)" >> $GITHUB_OUTPUT
 
       - name: Publish Allure Report and Set Commit Status
-        if: steps.allure_results.outputs.exists == 'true'
+        continue-on-error: true
+        timeout-minutes: 10
+        env:
+          API_SECRET: ${{ secrets.API_KEY }}
+          SERVER_URL: ${{ vars.STAGING_SERVER_URL }}
         uses: sireto/allure-report-host@v1.2
         with:
           serverUrl: ${{ secrets.STAGING_SERVER_URL }}
@@ -82,7 +86,6 @@ jobs:
           branch: ${{ github.ref_name }}
           reportName: ${{ github.run_id }}
           path: ./allure-results
-          githubToken: ${{ secrets.GITHUB_TOKEN }}
           testResult: ${{ steps.run_tests.outputs.exit_code }}
           testsPassed: ${{ steps.run_tests.outputs.passed }}
           testsFailed: ${{ steps.run_tests.outputs.failed }}
