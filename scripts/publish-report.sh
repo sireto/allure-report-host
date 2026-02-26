@@ -127,33 +127,33 @@ if (( http_code >= 200 && http_code < 300 )); then
         jq . "$response" 2>/dev/null || cat "$response"
     fi
 
-    if [[ -n "${GITHUB_TOKEN:-}" ]]; then
-      commit_sha="${GITHUB_SHA:-$(git rev-parse HEAD)}"
-      context="${report_name}"
-      target_url="${SERVER_URL}/${project_name}/${branch}/${report_name}/index.html"
+    # if [[ -n "${GITHUB_TOKEN:-}" ]]; then
+    #   commit_sha="${GITHUB_SHA:-$(git rev-parse HEAD)}"
+    #   context="${report_name}"
+    #   target_url="${SERVER_URL}/${project_name}/${branch}/${report_name}/index.html"
       
-      if [[ -n "$tests_passed" && -n "$tests_failed" ]]; then
-        description="Passed $tests_passed, Failed $tests_failed"
-      else
-        description="Allure report for this build"
-      fi
+    #   if [[ -n "$tests_passed" && -n "$tests_failed" ]]; then
+    #     description="Passed $tests_passed, Failed $tests_failed"
+    #   else
+    #     description="Allure report for this build"
+    #   fi
       
-      if [[ -n "$test_result" ]]; then
-        if [[ "$test_result" == "0" ]]; then
-          state="success"
-        else
-          state="failure"
-        fi
-      else
-        state="success"
-      fi
+    #   if [[ -n "$test_result" ]]; then
+    #     if [[ "$test_result" == "0" ]]; then
+    #       state="success"
+    #     else
+    #       state="failure"
+    #     fi
+    #   else
+    #     state="success"
+    #   fi
 
-      curl -s -X POST \
-        -H "Authorization: token ${GITHUB_TOKEN}" \
-        -H "Content-Type: application/json" \
-        -d "{\"state\": \"${state}\", \"target_url\": \"${target_url}\", \"description\": \"${description}\", \"context\": \"${context}\"}" \
-        "https://api.github.com/repos/${GITHUB_REPOSITORY}/statuses/${commit_sha}"
-    fi
+    #   curl -s -X POST \
+    #     -H "Authorization: token ${GITHUB_TOKEN}" \
+    #     -H "Content-Type: application/json" \
+    #     -d "{\"state\": \"${state}\", \"target_url\": \"${target_url}\", \"description\": \"${description}\", \"context\": \"${context}\"}" \
+    #     "https://api.github.com/repos/${GITHUB_REPOSITORY}/statuses/${commit_sha}"
+    # fi
 else
     echo -e "\n→ Upload failed (HTTP $http_code)" >&2
     if [[ -s "$response" ]]; then

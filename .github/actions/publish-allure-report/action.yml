@@ -42,13 +42,36 @@ runs:
         bash ./scripts/publish-report.sh \
           --url "${{ inputs.serverUrl }}" \
           --key "${{ inputs.serverApiKey }}" \
-          --github-token "${{ inputs.githubToken }}" \
-          --test-result "${{ inputs.testResult }}" \
-          --tests-passed "${{ inputs.testsPassed }}" \
-          --tests-failed "${{ inputs.testsFailed }}" \
           "${{ inputs.projectName }}" \
           "${{ inputs.branch }}" \
           "${{ inputs.reportName }}" \
           "${{ inputs.reportType }}" \
           "${{ inputs.path }}"
+      shell: bash
+
+    - name: Set commit status
+      if: ${{ inputs.githubToken }}
+      run: |
+        commit_sha="${GITHUB_SHA:-$(git rev-parse HEAD)}"
+        context="${{ inputs.reportName }}"
+        target_url="${{ inputs.serverUrl }}/${{ inputs.projectName }}/${{ inputs.branch }}/${{ inputs.reportName }}/index.html"
+        if [[ -n "${{ inputs.testsPassed }}" && -n "${{ inputs.testsFailed }}" ]]; then
+          description="Passed ${{ inputs.testsPassed }}, Failed ${{ inputs.testsFailed }}"
+        else
+          description="Allure report for this build"
+        fi
+        if [[ -n "${{ inputs.testResult }}" ]]; then
+          if [[ "${{ inputs.testResult }}" == "0" ]]; then
+            state="success"
+          else
+            state="failure"
+          fi
+        else
+          state="success"
+        fi
+        curl -s -X POST \
+          -H "Authorization: token ${{ inputs.githubToken }}" \
+          -H "Content-Type: application/json" \
+          -d "{\"state\": \"${state}\", \"target_url\": \"${target_url}\", \"description\": \"${description}\", \"context\": \"${context}\"}" \
+          "https://api.github.com/repos/${GITHUB_REPOSITORY}/statuses/${commit_sha}"
       shell: bash
