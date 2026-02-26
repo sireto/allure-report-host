@@ -23,9 +23,6 @@ inputs:
   path:
     description: 'Path to allure-results or zip'
     required: true
-  githubToken:
-    description: 'GitHub token for setting commit status'
-    required: false
   testResult:
     description: 'Test result exit code (0=success, nonzero=failure)'
     required: false 
@@ -50,7 +47,7 @@ runs:
       shell: bash
 
     - name: Set commit status
-      if: ${{ inputs.githubToken }}
+      if: ${{ secrets.GITHUB_TOKEN != '' }}
       run: |
         commit_sha="${GITHUB_SHA:-$(git rev-parse HEAD)}"
         context="${{ inputs.reportName }}"
@@ -70,7 +67,7 @@ runs:
           state="success"
         fi
         curl -s -X POST \
-          -H "Authorization: token ${{ inputs.githubToken }}" \
+          -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
           -H "Content-Type: application/json" \
           -d "{\"state\": \"${state}\", \"target_url\": \"${target_url}\", \"description\": \"${description}\", \"context\": \"${context}\"}" \
           "https://api.github.com/repos/${GITHUB_REPOSITORY}/statuses/${commit_sha}"
