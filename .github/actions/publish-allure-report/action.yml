@@ -44,8 +44,8 @@ runs:
           --key "${{ inputs.serverApiKey }}" \
           --github-token "${{ inputs.githubToken }}" \
           --test-result "${{ inputs.testResult }}" \
-          --test-passed "${{ inputs.testsPassed }}" \
-          --test-failed "${{ inputs.testsFailed }}" \
+          --tests-passed "${{ inputs.testsPassed }}" \
+          --tests-failed "${{ inputs.testsFailed }}" \
           "${{ inputs.projectName }}" \
           "${{ inputs.branch }}" \
           "${{ inputs.reportName }}" \
