@@ -58,48 +58,50 @@ runs:
       with:
         path: ./allure-results
 
-    - name: Update Check Run with Allure Summary
+    - name: Set commit status with Allure summary
       if: always()
-      timeout-minutes: 2
-      env:
-        GH_TOKEN: ${{ github.token }}
-      run: |
-        # Try to find the check run for this job
-        CHECK_RUN_ID=$(gh api \
-          -H "Accept: application/vnd.github+json" \
-          "/repos/${GITHUB_REPOSITORY}/commits/${GITHUB_SHA}/check-runs?check_name=${GITHUB_JOB}" \
-          --jq '.check_runs[] | select(.status == "in_progress" or .status == "queued") | .id' \
-          | head -n 1 || echo "")
-        if [[ -z "$CHECK_RUN_ID" ]]; then
-          echo "::warning::Could not find active check run ID – skipping summary update"
-          exit 0
-        fi
+      uses: actions/github-script@v6
+      with:
+        script: |
+          let sha = context.eventName === 'workflow_dispatch'
+            ? github.context.sha
+            : (context.payload.workflow_run
+              ? context.payload.workflow_run.head_sha
+              : github.context.sha);
 
-        # Determine outcome
-        UPLOAD_OUTCOME="${{ steps.upload-allure.outcome || 'timeout' }}"
-        if [[ "$UPLOAD_OUTCOME" == "success" ]]; then
-          STATE="success"
-          STATUS_TEXT="Upload completed"
-        elif [[ "$UPLOAD_OUTCOME" == "timeout" || "$UPLOAD_OUTCOME" == "failure" ]]; then
-          STATE="timed_out"
-          STATUS_TEXT="Upload timed out or failed"
-        else
-          STATE="neutral"
-          STATUS_TEXT="Upload status unknown"
-        fi
+          // Determine state & description
+          const uploadOutcome = "${{ steps.upload-allure.outcome || 'timeout' }}";
 
-        SUMMARY="**Allure Report**\n\
-        Status: $STATUS_TEXT\n\
-        Passed: ${{ steps.run_tests.outputs.passed || 'unknown' }}\n\
-        Failed: ${{ steps.run_tests.outputs.failed || 'unknown' }}\n\
-        [View Report (if successful)](${{ vars.STAGING_SERVER_URL }}/${{ github.repository }}/${{ github.ref_name }}/${{ github.run_id }}/index.html)"
+          let state = 'neutral';
+          let description = 'Allure report processing unknown';
 
-        gh api \
-          --method PATCH \
-          -H "Accept: application/vnd.github+json" \
-          "/repos/${GITHUB_REPOSITORY}/check-runs/$CHECK_RUN_ID" \
-          -f "status=completed" \
-          -f "conclusion=$STATE" \
-          -f "output[title]=Allure Report" \
-          -f "output[summary]=$SUMMARY" || echo "::warning::Failed to update check summary"
-      shell: bash
+          if (uploadOutcome === 'success') {
+            state = 'success';
+            description = 'Allure report uploaded successfully';
+          } else if (uploadOutcome === 'failure') {
+            state = 'failure';
+            description = 'Allure report upload failed';
+          } else if (uploadOutcome === 'timeout' || uploadOutcome === 'cancelled') {
+            state = 'error';
+            description = 'Allure report upload timed out or was cancelled';
+          }
+
+          const details = [
+            description,
+            `Passed:  ${{ steps.run_tests.outputs.passed  || 'unknown' }}`,
+            `Failed:  ${{ steps.run_tests.outputs.failed  || 'unknown' }}`,
+            "",
+            "View report → ${{ vars.STAGING_SERVER_URL }}/${{ github.repository }}/${{ github.ref_name }}/${{ github.run_id }}/index.html"
+          ].join('\n');
+
+          await github.rest.repos.createCommitStatus({
+            owner: context.repo.owner,
+            repo: context.repo.repo,
+            sha: sha,
+            state: state,
+            context: 'allure-report',
+            description: description,
+            target_url: `${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}`,
+          });
+
+          console.log(`Set commit status → ${state} / ${description}`);
