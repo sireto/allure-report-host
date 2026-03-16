@@ -35,6 +35,14 @@ inputs:
 runs:
   using: "composite"
   steps:
+    - name: Check for Allure results
+      shell: bash
+      run: |
+        if [ ! -d "${{ inputs.path }}" ]; then
+          echo "No Allure results found, skipping upload"
+          exit 0
+        fi
+
     - name: Run publish report script
       id: publish-allure-report
       shell: bash
@@ -48,15 +56,6 @@ runs:
           "${{ inputs.reportType }}" \
           "${{ inputs.path }}"
 
-    - name: Publish Allure Report
-      env:
-        API_SECRET:   ${{ inputs.serverApiKey }}
-        SERVER_URL:   ${{ inputs.serverUrl }}
-
-      uses: sireto/allure-report-host@v1.2
-      with:
-        path: ./allure-results
-
     - name: Set commit status with Allure summary
       if: always()
       uses: actions/github-script@v6
@@ -69,7 +68,6 @@ runs:
           const exitCode = "${{ inputs.testResult || '1' }}";
 
           const state = exitCode === "0" ? "success" : "failure";
-
           const description = `Tests ✓${passed} ✗${failed}`.slice(0, 140);
 
           await github.rest.repos.createCommitStatus({
