@@ -78,7 +78,7 @@ jobs:
         env:
           API_SECRET: ${{ secrets.API_KEY }}
           SERVER_URL: ${{ vars.STAGING_SERVER_URL }}
-        uses: ./.github/actions/allure-report-host
+        uses: ./.github/actions/publish-allure-report
         with:
           serverUrl: ${{ vars.STAGING_SERVER_URL }}
           serverApiKey: ${{ secrets.API_KEY }}
