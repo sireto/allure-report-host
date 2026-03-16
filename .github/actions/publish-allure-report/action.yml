@@ -1,5 +1,4 @@
 name: 'Publish Allure Report'
-id: upload-allure
 description: 'Uploads an Allure report to the central report host'
 inputs:
   serverUrl:
@@ -36,7 +35,9 @@ inputs:
 runs:
   using: "composite"
   steps:
-    - run: |
+    - name: Run publish report script
+      id: publish-allure-report
+      run: |
         bash ./scripts/publish-report.sh \
           --url "${{ inputs.serverUrl }}" \
           --key "${{ inputs.serverApiKey }}" \
@@ -48,11 +49,11 @@ runs:
       shell: bash
 
     - name: Publish Allure Report
-      timeout-minutes: 12
+      timeout-minutes: 2
       continue-on-error: true
       env:
-        API_SECRET:   ${{ secrets.API_KEY }}
-        SERVER_URL:   ${{ vars.STAGING_SERVER_URL }}
+        API_SECRET:   ${{ inputs.serverApiKey }}
+        SERVER_URL:   ${{ inputs.serverUrl }}
 
       uses: sireto/allure-report-host@v1.2
       with:
@@ -63,45 +64,28 @@ runs:
       uses: actions/github-script@v6
       with:
         script: |
-          let sha = context.eventName === 'workflow_dispatch'
-            ? github.context.sha
-            : (context.payload.workflow_run
-              ? context.payload.workflow_run.head_sha
-              : github.context.sha);
+          const sha = context.sha;
 
-          // Determine state & description
-          const uploadOutcome = "${{ steps.upload-allure.outcome || 'timeout' }}";
+          const passed = "${{ inputs.testsPassed || '0' }}";
+          const failed = "${{ inputs.testsFailed || '0' }}";
+          const exitCode = "${{ inputs.testResult || '1' }}";
 
-          let state = 'neutral';
-          let description = 'Allure report processing unknown';
+          const state = exitCode === "0" ? "success" : "failure";
 
-          if (uploadOutcome === 'success') {
-            state = 'success';
-            description = 'Allure report uploaded successfully';
-          } else if (uploadOutcome === 'failure') {
-            state = 'failure';
-            description = 'Allure report upload failed';
-          } else if (uploadOutcome === 'timeout' || uploadOutcome === 'cancelled') {
-            state = 'error';
-            description = 'Allure report upload timed out or was cancelled';
-          }
-
-          const details = [
-            description,
-            `Passed:  ${{ steps.run_tests.outputs.passed  || 'unknown' }}`,
-            `Failed:  ${{ steps.run_tests.outputs.failed  || 'unknown' }}`,
-            "",
-            "View report → ${{ vars.STAGING_SERVER_URL }}/${{ github.repository }}/${{ github.ref_name }}/${{ github.run_id }}/index.html"
-          ].join('\n');
+          const description = `Tests ✓${passed} ✗${failed}`.slice(0, 140);
 
           await github.rest.repos.createCommitStatus({
             owner: context.repo.owner,
             repo: context.repo.repo,
             sha: sha,
             state: state,
-            context: 'allure-report',
+            context: "allure-report",
             description: description,
-            target_url: `${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}`,
+            target_url: `${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}`
           });
 
-          console.log(`Set commit status → ${state} / ${description}`);
+    - name: Write test summary
+      run: |
+        echo "## Test Results" >> $GITHUB_STEP_SUMMARY
+        echo "✅ Passed: ${{ inputs.testsPassed }}" >> $GITHUB_STEP_SUMMARY
+        echo "❌ Failed: ${{ inputs.testsFailed }}" >> $GITHUB_STEP_SUMMARY
