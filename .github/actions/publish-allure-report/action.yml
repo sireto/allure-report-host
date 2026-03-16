@@ -37,6 +37,7 @@ runs:
   steps:
     - name: Run publish report script
       id: publish-allure-report
+      shell: bash
       run: |
         bash ./scripts/publish-report.sh \
           --url "${{ inputs.serverUrl }}" \
@@ -46,11 +47,8 @@ runs:
           "${{ inputs.reportName }}" \
           "${{ inputs.reportType }}" \
           "${{ inputs.path }}"
-      shell: bash
 
     - name: Publish Allure Report
-      timeout-minutes: 2
-      continue-on-error: true
       env:
         API_SECRET:   ${{ inputs.serverApiKey }}
         SERVER_URL:   ${{ inputs.serverUrl }}
@@ -85,6 +83,7 @@ runs:
           });
 
     - name: Write test summary
+      shell: bash
       run: |
         echo "## Test Results" >> $GITHUB_STEP_SUMMARY
         echo "✅ Passed: ${{ inputs.testsPassed }}" >> $GITHUB_STEP_SUMMARY
