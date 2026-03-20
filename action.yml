@@ -21,28 +21,95 @@ inputs:
     required: false
     default: 'allure'
   path:
-    description: 'Path to allure-results or zip'
+    description: 'Path to allure-results folder or .zip file'
     required: true
   testResult:
-    description: 'Test result exit code (0=success, nonzero=failure)'
+    description: 'Test exit code (0=success, nonzero=failure). Used for commit status state.'
     required: false
   testsPassed:
-    description: 'Number of passed tests'
+    description: 'Passed test count. Auto-detected from allure-results JSON if omitted.'
     required: false
   testsFailed:
-    description: 'Number of failed tests'
+    description: 'Failed test count. Auto-detected from allure-results JSON if omitted.'
     required: false
 runs:
   using: "composite"
   steps:
-    - run: |
+    - name: Validate inputs and detect test counts
+      id: pre
+      shell: bash
+      run: |
+        # --- input validation ---
+        if [[ -z "${{ inputs.serverUrl }}" ]]; then
+          echo "::error::serverUrl is required"; exit 1
+        fi
+        if [[ -z "${{ inputs.serverApiKey }}" ]]; then
+          echo "::error::serverApiKey is required"; exit 1
+        fi
+        if [[ "${{ inputs.reportType }}" != "allure" && "${{ inputs.reportType }}" != "raw" ]]; then
+          echo "::error::reportType must be 'allure' or 'raw'"; exit 1
+        fi
+
+        path="${{ inputs.path }}"
+        if [[ ! -d "$path" && ! ( -f "$path" && "$path" == *.zip ) ]]; then
+          echo "::warning::path '$path' not found – skipping upload"
+          echo "skip=true" >> "$GITHUB_OUTPUT"
+          exit 0
+        fi
+        echo "skip=false" >> "$GITHUB_OUTPUT"
+
+        # --- passed/failed: use provided values, or auto-detect from allure JSON ---
+        passed="${{ inputs.testsPassed }}"
+        failed="${{ inputs.testsFailed }}"
+
+        if [[ "${{ inputs.reportType }}" == "allure" && -d "$path" ]]; then
+          if [[ -z "$passed" ]]; then
+            passed=$(find "$path" -name "*-result.json" \
+              -exec grep -lE '"status"\s*:\s*"passed"' {} \; 2>/dev/null | wc -l | tr -d ' ')
+          fi
+          if [[ -z "$failed" ]]; then
+            failed=$(find "$path" -name "*-result.json" \
+              -exec grep -lE '"status"\s*:\s*"(failed|broken)"' {} \; 2>/dev/null | wc -l | tr -d ' ')
+          fi
+        fi
+
+        echo "passed=${passed:-0}" >> "$GITHUB_OUTPUT"
+        echo "failed=${failed:-0}" >> "$GITHUB_OUTPUT"
+
+    - name: Upload report
+      id: upload
+      if: ${{ steps.pre.outputs.skip != 'true' }}
+      shell: bash
+      continue-on-error: true
+      run: |
         bash "$GITHUB_ACTION_PATH/scripts/publish-report.sh" \
           --url "${{ inputs.serverUrl }}" \
           --key "${{ inputs.serverApiKey }}" \
+          --tests-passed "${{ steps.pre.outputs.passed }}" \
+          --tests-failed "${{ steps.pre.outputs.failed }}" \
           "${{ inputs.projectName }}" \
           "${{ inputs.branch }}" \
           "${{ inputs.reportName }}" \
           "${{ inputs.reportType }}" \
           "${{ inputs.path }}"
+
+    - name: Set commit status
       shell: bash
-      continue-on-error: true
+      run: |
+        passed="${{ steps.pre.outputs.passed }}"
+        failed="${{ steps.pre.outputs.failed }}"
+        test_result="${{ inputs.testResult }}"
+        report_url="${{ inputs.serverUrl }}/${{ inputs.projectName }}/${{ inputs.branch }}/${{ inputs.reportName }}/index.html"
+
+        if [[ -n "$test_result" && "$test_result" != "0" ]]; then
+          state="failure"
+        else
+          state="success"
+        fi
+
+        curl -s -X POST \
+          -H "Authorization: token $GITHUB_TOKEN" \
+          -H "Content-Type: application/json" \
+          -d "{\"state\":\"${state}\",\"target_url\":\"${report_url}\",\"description\":\"Passed ${passed}, Failed ${failed}\",\"context\":\"Allure Report\"}" \
+          "https://api.github.com/repos/${GITHUB_REPOSITORY}/statuses/${GITHUB_SHA}" \
+          || echo "::warning::Failed to post commit status"
