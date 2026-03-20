@@ -7,6 +7,10 @@ inputs:
   serverApiKey:
     description: 'API key for authentication'
     required: true
+  githubToken:
+    description: 'GitHub token for posting commit status'
+    required: false
+    default: ${{ github.token }}
   projectName:
     description: 'Project name'
     required: true
@@ -108,8 +112,8 @@ runs:
         fi
 
         curl -s -X POST \
-          -H "Authorization: token $GITHUB_TOKEN" \
+          -H "Authorization: token ${{ inputs.githubToken }}" \
           -H "Content-Type: application/json" \
-          -d "{\"state\":\"${state}\",\"target_url\":\"${report_url}\",\"description\":\"Passed ${passed}, Failed ${failed}\",\"context\":\"Allure Report\"}" \
+          -d "{\"state\":\"${state}\",\"target_url\":\"${report_url}\",\"description\":\"Passed ${passed}, Failed ${failed}\",\"context\":\"Allure Report / ${{ inputs.reportName }}\"}" \
           "https://api.github.com/repos/${GITHUB_REPOSITORY}/statuses/${GITHUB_SHA}" \
           || echo "::warning::Failed to post commit status"
