@@ -5,8 +5,9 @@ WORKDIR /app
 COPY api/Cargo.toml api/Cargo.toml
 COPY api/Cargo.lock api/Cargo.lock
 
-# Copy the source and build
+# Copy the source and static assets (needed at compile time for include_str!)
 COPY api/src api/src
+COPY api/static api/static
 RUN cd api && cargo build --release
 
 # Runtime Stage
@@ -24,6 +25,7 @@ WORKDIR /app
 
 COPY --from=builder /app/api/target/release/api /app/api
 COPY scripts/ /app/scripts/
+COPY api/static/ /app/static/
 
 RUN chmod +x /app/scripts/*.sh
 

@@ -98,7 +98,8 @@ async fn main() {
                     include_str!("../static/index.html"),
                 )
             }),
-        );
+        )
+        .layer(middleware::from_fn_with_state(ac.clone(), access_control));
 
     let swagger_routes =
         SwaggerUi::new("/swagger-ui").url("/api-docs/openapi.json", ApiDoc::openapi());
