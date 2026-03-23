@@ -88,7 +88,17 @@ async fn main() {
         .layer(middleware::from_fn(check_content_length))
         .layer(DefaultBodyLimit::max(MAX_UPLOAD_SIZE_BYTES));
 
-    let public_routes = Router::new().route("/manifest.json", get(get_manifest));
+    let public_routes = Router::new()
+        .route("/manifest.json", get(get_manifest))
+        .route(
+            "/",
+            get(|| async {
+                (
+                    [("content-type", "text/html; charset=utf-8")],
+                    include_str!("../static/index.html"),
+                )
+            }),
+        );
 
     let swagger_routes =
         SwaggerUi::new("/swagger-ui").url("/api-docs/openapi.json", ApiDoc::openapi());
