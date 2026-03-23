@@ -19,6 +19,9 @@ pub struct FileUploadRequest {
     report_name: String,
     #[schema(default = "allure", example = "allure")]
     r#type: Option<ReportType>,
+    /// Optional run identifier, e.g. "<github-sha>/<action-runid>"
+    #[schema(example = "abc123def456abcdef/1234567890")]
+    run_id: Option<String>,
     #[schema(value_type = String, format = Binary)]
     file: Vec<u8>,
 }

@@ -67,28 +67,69 @@ pub async fn get_manifest() -> impl IntoResponse {
                                     }
                                 }
                             } else {
-                                // Find latest numeric report ID
+                                // Collect ALL numeric run directories for this report
                                 if let Ok(report_ids) = std::fs::read_dir(&report_path) {
-                                    let mut max_id: u32 = 0;
-                                    for id_entry in report_ids.flatten() {
-                                        if let Ok(file_name) = id_entry.file_name().into_string()
-                                            && let Ok(id) = file_name.parse::<u32>()
-                                            && id > max_id
-                                        {
-                                            max_id = id;
-                                        }
-                                    }
+                                    let mut runs: Vec<serde_json::Value> = Vec::new();
 
-                                    if max_id > 0 {
+                                    for id_entry in report_ids.flatten() {
+                                        let file_name_os = id_entry.file_name();
+                                        let Some(file_name) = file_name_os.to_str() else {
+                                            continue;
+                                        };
+                                        // Skip non-numeric dirs (e.g. "latest" symlink, history.jsonl)
+                                        let Ok(id) = file_name.parse::<u32>() else {
+                                            continue;
+                                        };
+
                                         let url = format!(
                                             "/{}/{}/{}/{}/index.html",
-                                            project_name, branch_name, report_name, max_id
+                                            project_name, branch_name, report_name, id
                                         );
+
+                                        // Read metadata.json for this run if it exists
+                                        let metadata: Option<serde_json::Value> =
+                                            std::fs::read_to_string(
+                                                report_path
+                                                    .join(file_name)
+                                                    .join("metadata.json"),
+                                            )
+                                            .ok()
+                                            .and_then(|s| serde_json::from_str(&s).ok());
+
+                                        let run_id = metadata
+                                            .as_ref()
+                                            .and_then(|m| m["run_id"].as_str())
+                                            .map(|s| s.to_string());
+                                        let created_at = metadata
+                                            .as_ref()
+                                            .and_then(|m| m["created_at"].as_u64());
+
+                                        runs.push(json!({
+                                            "id": id,
+                                            "run_id": run_id,
+                                            "created_at": created_at,
+                                            "path": url,
+                                        }));
+                                    }
+
+                                    if !runs.is_empty() {
+                                        // Sort runs by id descending (newest first)
+                                        runs.sort_by(|a, b| {
+                                            let id_b = b["id"].as_u64().unwrap_or(0);
+                                            let id_a = a["id"].as_u64().unwrap_or(0);
+                                            id_b.cmp(&id_a)
+                                        });
+
+                                        let latest_url = format!(
+                                            "/{}/{}/{}/latest/index.html",
+                                            project_name, branch_name, report_name
+                                        );
+
                                         reports.push(json!({
                                             "name": report_name,
-                                            "id": max_id,
-                                            "path": url,
-                                            "type": "allure"
+                                            "latest_path": latest_url,
+                                            "type": "allure",
+                                            "runs": runs
                                         }));
                                     }
                                 }

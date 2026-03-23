@@ -19,8 +19,7 @@ EOF
 
 dry_run=0
 verbose=0
-tests_passed=""
-tests_failed=""
+run_id=""
 
 while [[ $# -gt 0 ]]; do
     case "$1" in
@@ -29,10 +28,7 @@ while [[ $# -gt 0 ]]; do
         --verbose|-v) verbose=1; shift ;;
         --url) SERVER_URL="$2"; shift 2 ;;
         --key) REPORT_API_SECRET="$2"; shift 2 ;;
-        --github-token) GITHUB_TOKEN="$2"; shift 2 ;;
-        --test-result) test_result="$2"; shift 2 ;;
-        --tests-passed) tests_passed="$2"; shift 2 ;;
-        --tests-failed) tests_failed="$2"; shift 2 ;;
+        --run-id) run_id="$2"; shift 2 ;;
         *) break ;;
     esac
 done
@@ -90,6 +86,7 @@ curl_args=(
 )
 
 [[ -n "$REPORT_API_SECRET" ]] && curl_args+=(-H "X-API-Key: $REPORT_API_SECRET")
+[[ -n "$run_id" ]] && curl_args+=(-F "run_id=$run_id")
 [[ $verbose -eq 1 ]] && curl_args+=(-v)
 
 # Summary
@@ -99,6 +96,7 @@ echo "  Project:       $project_name"
 echo "  Branch:        $branch"
 echo "  Report name:   $report_name"
 echo "  Type:          $report_type"
+[[ -n "$run_id" ]] && echo "  Run ID:        $run_id"
 echo "  File:          $upload_file ($(du -h "$upload_file" | cut -f1))"
 
 echo "→ Starting upload..."

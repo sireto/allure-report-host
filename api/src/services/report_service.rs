@@ -22,6 +22,7 @@ pub async fn upload_report(mut multipart: Multipart) -> impl IntoResponse {
     let mut branch: Option<String> = None;
     let mut report_name: Option<String> = None;
     let mut report_type: String = "allure".to_string();
+    let mut run_id: Option<String> = None;
     let mut zip_data: Option<Vec<u8>> = None;
     let mut zip_size: u64;
 
@@ -74,6 +75,13 @@ pub async fn upload_report(mut multipart: Multipart) -> impl IntoResponse {
                     && !val.is_empty()
                 {
                     report_type = val.to_lowercase();
+                }
+            }
+            "run_id" => {
+                if let Ok(val) = field.text().await
+                    && !val.is_empty()
+                {
+                    run_id = Some(val);
                 }
             }
             _ => {
@@ -199,6 +207,26 @@ pub async fn upload_report(mut multipart: Multipart) -> impl IntoResponse {
     };
     let report_id = next_id.to_string();
 
+    // Write metadata.json with run_id and creation timestamp
+    let created_at_unix = std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .map(|d| d.as_secs())
+        .unwrap_or(0);
+    let metadata = serde_json::json!({
+        "run_id": run_id,
+        "report_id": report_id,
+        "report_type": report_type,
+        "created_at": created_at_unix
+    });
+    if let Err(e) = tokio::fs::write(
+        report_dir.join("metadata.json"),
+        metadata.to_string(),
+    )
+    .await
+    {
+        eprintln!("Warning: Failed to write metadata.json: {}", e);
+    }
+
     let extract_dir = if report_type == "allure" {
         report_dir.join("allure-results")
     } else {
@@ -319,6 +347,17 @@ pub async fn upload_report(mut multipart: Multipart) -> impl IntoResponse {
         collect_history(&parent_dir, &actual_input_dir, &report_dir).await;
     }
 
+    // Create/update 'latest' symlink pointing to this run's numeric ID
+    let latest_link = parent_dir.join("latest");
+    if tokio::fs::symlink_metadata(&latest_link).await.is_ok() {
+        if let Err(e) = tokio::fs::remove_file(&latest_link).await {
+            eprintln!("Warning: Failed to remove old 'latest' symlink: {}", e);
+        }
+    }
+    if let Err(e) = tokio::fs::symlink(&report_id, &latest_link).await {
+        eprintln!("Warning: Failed to create 'latest' symlink: {}", e);
+    }
+
     // Build URL based on report type
     let url = if report_type == "raw" {
         format!(
@@ -346,6 +385,7 @@ pub async fn upload_report(mut multipart: Multipart) -> impl IntoResponse {
             "branch": branch,
             "report_name": report_name,
             "report_id": report_id,
+            "run_id": run_id,
             "report_type": report_type,
             "url": url
         })),

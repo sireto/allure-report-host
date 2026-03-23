@@ -86,16 +86,27 @@ runs:
       shell: bash
       continue-on-error: true
       run: |
-        bash "$GITHUB_ACTION_PATH/scripts/publish-report.sh" \
+        run_id="${GITHUB_SHA}/${GITHUB_RUN_ID}"
+
+        response=$(bash "$GITHUB_ACTION_PATH/scripts/publish-report.sh" \
           --url "${{ inputs.serverUrl }}" \
           --key "${{ inputs.serverApiKey }}" \
-          --tests-passed "${{ steps.pre.outputs.passed }}" \
-          --tests-failed "${{ steps.pre.outputs.failed }}" \
+          --run-id "$run_id" \
           "${{ inputs.projectName }}" \
           "${{ inputs.branch }}" \
           "${{ inputs.reportName }}" \
           "${{ inputs.reportType }}" \
-          "${{ inputs.path }}"
+          "${{ inputs.path }}" 2>&1)
+
+        echo "$response"
+
+        # Extract the report URL from the JSON response and expose as step output
+        report_url=$(echo "$response" | grep -o '"url"\s*:\s*"[^"]*"' | head -1 | sed 's/.*"url"\s*:\s*"//;s/"$//')
+        if [[ -n "$report_url" ]]; then
+          echo "report_url=${{ inputs.serverUrl }}${report_url}" >> "$GITHUB_OUTPUT"
+        else
+          echo "report_url=${{ inputs.serverUrl }}/${{ inputs.projectName }}/${{ inputs.branch }}/${{ inputs.reportName }}/latest/index.html" >> "$GITHUB_OUTPUT"
+        fi
 
     - name: Set commit status
       shell: bash
@@ -103,7 +114,12 @@ runs:
         passed="${{ steps.pre.outputs.passed }}"
         failed="${{ steps.pre.outputs.failed }}"
         test_result="${{ inputs.testResult }}"
-        report_url="${{ inputs.serverUrl }}/${{ inputs.projectName }}/${{ inputs.branch }}/${{ inputs.reportName }}/index.html"
+        report_url="${{ steps.upload.outputs.report_url }}"
+
+        # Fall back to latest URL if upload step was skipped or URL extraction failed
+        if [[ -z "$report_url" ]]; then
+          report_url="${{ inputs.serverUrl }}/${{ inputs.projectName }}/${{ inputs.branch }}/${{ inputs.reportName }}/latest/index.html"
+        fi
 
         if [[ -n "$test_result" && "$test_result" != "0" ]]; then
           state="failure"

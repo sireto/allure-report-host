@@ -476,6 +476,82 @@
         .report-card:nth-child(5) { animation-delay: 0.16s; }
         .report-card:nth-child(6) { animation-delay: 0.2s; }
 
+        /* ─── Runs View ─── */
+        .runs-page {
+            display: none;
+        }
+
+        .runs-page.active {
+            display: block;
+        }
+
+        .run-card {
+            background: var(--bg-card);
+            border: 1px solid var(--border-default);
+            border-radius: var(--radius);
+            padding: 20px;
+            text-decoration: none;
+            color: inherit;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            transition: all var(--transition);
+            animation: fadeUp 0.35s ease both;
+        }
+
+        .run-card:hover {
+            border-color: var(--border-hover);
+            background: var(--bg-card-hover);
+        }
+
+        .run-card-header {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            font-size: 0.925rem;
+            font-weight: 600;
+            color: var(--text-primary);
+        }
+
+        .run-card-header svg {
+            width: 18px;
+            height: 18px;
+            color: var(--accent);
+            flex-shrink: 0;
+        }
+
+        .run-card-details {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            font-size: 0.8rem;
+            color: var(--text-muted);
+            flex-wrap: wrap;
+        }
+
+        .run-badge {
+            background: var(--accent-dim);
+            color: var(--accent);
+            padding: 3px 9px;
+            border-radius: 6px;
+            font-weight: 500;
+            font-size: 0.75rem;
+            border: 1px solid var(--accent-border);
+        }
+
+        .run-badge-latest {
+            background: rgba(34, 197, 94, 0.1);
+            color: #22c55e;
+            border-color: rgba(34, 197, 94, 0.2);
+        }
+
+        .run-card:nth-child(1) { animation-delay: 0s; }
+        .run-card:nth-child(2) { animation-delay: 0.04s; }
+        .run-card:nth-child(3) { animation-delay: 0.08s; }
+        .run-card:nth-child(4) { animation-delay: 0.12s; }
+        .run-card:nth-child(5) { animation-delay: 0.16s; }
+        .run-card:nth-child(6) { animation-delay: 0.2s; }
+
         /* ─── Light Theme ─── */
         [data-theme="light"] {
             --bg-primary: #f8f9fa;
@@ -623,6 +699,25 @@
 
             <div id="reportsContainer" class="reports-grid"></div>
         </div>
+
+        <!-- Runs View -->
+        <div id="runsView" class="runs-page">
+            <div class="reports-header">
+                <button class="back-button" id="runsBackButton">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5"/><path d="m12 19-7-7 7-7"/></svg>
+                    Back
+                </button>
+                <div class="breadcrumb">
+                    <strong id="breadcrumbRunProject"></strong>
+                    <span class="breadcrumb-sep">/</span>
+                    <strong id="breadcrumbRunBranch"></strong>
+                    <span class="breadcrumb-sep">/</span>
+                    <strong id="breadcrumbRunReport"></strong>
+                </div>
+            </div>
+
+            <div id="runsContainer" class="reports-grid"></div>
+        </div>
     </div>
 
     <script>
@@ -719,6 +814,7 @@
             const container = document.getElementById('reportsContainer');
             
             document.getElementById('projectsView').style.display = 'none';
+            document.getElementById('runsView').classList.remove('active');
             document.getElementById('reportsView').classList.add('active');
             document.getElementById('breadcrumbProject').textContent = project;
             document.getElementById('breadcrumbBranch').textContent = branch;
@@ -734,24 +830,98 @@
                 return;
             }
 
-            container.innerHTML = reports.map(report => `
-                <a href="${report.path}" class="report-card">
-                    <div class="report-name">
-                        ${icons.report}
-                        ${report.name}
+            container.innerHTML = reports.map(report => {
+                const runCount = report.runs ? report.runs.length : (report.id ? 1 : 0);
+                const latestRun = report.runs ? report.runs[0] : null;
+                const latestLabel = latestRun && latestRun.run_id ? latestRun.run_id : `Run #${latestRun ? latestRun.id : report.id}`;
+
+                // If it's a report with runs, navigate to runs view; otherwise open directly
+                if (report.runs && report.runs.length > 0) {
+                    return `
+                        <a href="#" class="report-card" onclick="showRuns('${project}', '${branch}', '${report.name}'); return false;">
+                            <div class="report-name">
+                                ${icons.report}
+                                ${report.name}
+                            </div>
+                            <div class="report-meta">
+                                <span class="report-id">${runCount} run${runCount !== 1 ? 's' : ''}</span>
+                                <span class="report-version">${report.type}</span>
+                            </div>
+                        </a>
+                    `;
+                } else {
+                    return `
+                        <a href="${report.path}" class="report-card">
+                            <div class="report-name">
+                                ${icons.report}
+                                ${report.name}
+                            </div>
+                            <div class="report-meta">
+                                <span class="report-id">Run #${report.id}</span>
+                                <span class="report-version">${report.type}</span>
+                            </div>
+                        </a>
+                    `;
+                }
+            }).join('');
+        }
+
+        // Show runs for a report
+        function showRuns(project, branch, reportName) {
+            const reports = projectsData[project]?.[branch] || [];
+            const report = reports.find(r => r.name === reportName);
+            const runs = report?.runs || [];
+            const container = document.getElementById('runsContainer');
+
+            document.getElementById('projectsView').style.display = 'none';
+            document.getElementById('reportsView').classList.remove('active');
+            document.getElementById('runsView').classList.add('active');
+            document.getElementById('breadcrumbRunProject').textContent = project;
+            document.getElementById('breadcrumbRunBranch').textContent = branch;
+            document.getElementById('breadcrumbRunReport').textContent = reportName;
+
+            // Wire back button to return to reports
+            document.getElementById('runsBackButton').onclick = function() {
+                showReports(project, branch);
+            };
+
+            if (runs.length === 0) {
+                container.innerHTML = `
+                    <div class="empty-state">
+                        <div class="empty-icon-wrap">${icons.empty}</div>
+                        <div class="empty-text">No runs found</div>
+                        <div class="empty-subtext">Upload test results to create runs</div>
                     </div>
-                    <div class="report-meta">
-                        <span class="report-id">Run #${report.id}</span>
-                        <span class="report-version">Latest version</span>
-                    </div>
-                </a>
-            `).join('');
+                `;
+                return;
+            }
+
+            container.innerHTML = runs.map((run, index) => {
+                const isLatest = index === 0;
+                const runLabel = run.run_id ? run.run_id : `Run #${run.id}`;
+                const dateStr = run.created_at ? new Date(run.created_at * 1000).toLocaleString() : '';
+
+                return `
+                    <a href="${run.path}" class="run-card">
+                        <div class="run-card-header">
+                            ${icons.report}
+                            ${runLabel}
+                        </div>
+                        <div class="run-card-details">
+                            <span class="run-badge">ID #${run.id}</span>
+                            ${isLatest ? '<span class="run-badge run-badge-latest">Latest</span>' : ''}
+                            ${dateStr ? `<span>${dateStr}</span>` : ''}
+                        </div>
+                    </a>
+                `;
+            }).join('');
         }
 
         // Show projects view
         function showProjects() {
             document.getElementById('projectsView').style.display = 'block';
             document.getElementById('reportsView').classList.remove('active');
+            document.getElementById('runsView').classList.remove('active');
         }
 
         // Update timestamp
