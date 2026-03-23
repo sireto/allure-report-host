@@ -110,6 +110,11 @@ impl AccessControl {
             return (false, "client ip not allowed");
         }
 
+        // No XFF header: treat the remote (trusted proxy) IP itself as the client IP
+        if Self::ip_in_nets(remote, &self.allowed_ips) {
+            return (true, "no xff, remote addr in allowed_ips");
+        }
+
         (false, "client ip not allowed")
     }
 }
