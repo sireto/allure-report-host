@@ -521,6 +521,10 @@
             flex-shrink: 0;
         }
 
+        .run-name {
+            overflow-wrap: anywhere;            
+        }
+
         .run-card-details {
             display: flex;
             align-items: center;
@@ -906,7 +910,9 @@
                     <a href="${run.path}" class="run-card">
                         <div class="run-card-header">
                             ${icons.report}
-                            ${runLabel}
+                            <span class="run-name">
+                                ${runLabel}
+                            </span>
                         </div>
                         <div class="run-card-details">
                             <span class="run-badge">ID #${run.id}</span>
