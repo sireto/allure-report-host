@@ -41,17 +41,54 @@ cp api/.env.example api/.env
 
 ### 2. Upload a Report via GitHub Actions
 
-Add the following step to your workflow **after** your tests run:
+> **Note:** To enable GitHub Checks, your workflow must include the following:
+> - The `checks: write` permission under `permissions` (required for posting GitHub Checks).
+> - The `contents: read` permission (required for basic repo access).
+> - The `sireto/allure-report-host` action step after your tests.
+>
+> Example workflow:
+>
+> ```yaml
+> name: Playwright Tests
+> on:
+>   push:
+>     branches: [ main, master ]
+>   pull_request:
+>     branches: [ main, master ]
+>
+> permissions:
+>   contents: read
+>   checks: write
+>
+> jobs:
+>   test:
+>     timeout-minutes: 60
+>     runs-on: ubuntu-latest
+>     steps:
+>     - uses: actions/checkout@v4
+>     - uses: actions/setup-node@v4
+>       with:
+>         node-version: lts/*
+>     - name: Install dependencies
+>       run: npm ci
+>     - name: Install Playwright Browsers
+>       run: npx playwright install --with-deps
+>     - name: Run Playwright tests
+>       run: npx playwright test
+>     - name: Publish Allure Report
+>       if: ${{ always() && !cancelled() }}
+>       uses: sireto/allure-report-host@v1
+>       with:
+>         serverUrl: ${{ vars.REPORT_SERVER_URL }}
+>         serverApiKey: ${{ secrets.REPORT_API_SECRET }}
+>         projectName: my-app
+>         branch: ${{ github.ref_name }}
+>         reportName: nightly
+>         path: ./allure-results
+> ```
 
-```yaml
-- uses: sireto/allure-report-host@v1
-  with:
-    serverUrl: ${{ vars.REPORT_SERVER_URL }}
-    serverApiKey: ${{ secrets.REPORT_API_SECRET }}
-    projectName: my-app
-    branch: ${{ github.ref_name }}
-    reportName: nightly            # logical name — run ID is tracked separately
-    path: ./allure-results        # folder or .zip file
+```markdown
+> See the example workflow above for how to add the `sireto/allure-report-host` step after your tests.
 ```
 
 The action will:
