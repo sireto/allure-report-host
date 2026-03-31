@@ -218,12 +218,7 @@ pub async fn upload_report(mut multipart: Multipart) -> impl IntoResponse {
         "report_type": report_type,
         "created_at": created_at_unix
     });
-    if let Err(e) = tokio::fs::write(
-        report_dir.join("metadata.json"),
-        metadata.to_string(),
-    )
-    .await
-    {
+    if let Err(e) = tokio::fs::write(report_dir.join("metadata.json"), metadata.to_string()).await {
         eprintln!("Warning: Failed to write metadata.json: {}", e);
     }
 
@@ -349,11 +344,12 @@ pub async fn upload_report(mut multipart: Multipart) -> impl IntoResponse {
 
     // Create/update 'latest' symlink pointing to this run's numeric ID
     let latest_link = parent_dir.join("latest");
-    if tokio::fs::symlink_metadata(&latest_link).await.is_ok() {
-        if let Err(e) = tokio::fs::remove_file(&latest_link).await {
-            eprintln!("Warning: Failed to remove old 'latest' symlink: {}", e);
-        }
+    if tokio::fs::symlink_metadata(&latest_link).await.is_ok()
+        && let Err(e) = tokio::fs::remove_file(&latest_link).await
+    {
+        eprintln!("Warning: Failed to remove old 'latest' symlink: {}", e);
     }
+
     if let Err(e) = tokio::fs::symlink(&report_id, &latest_link).await {
         eprintln!("Warning: Failed to create 'latest' symlink: {}", e);
     }
