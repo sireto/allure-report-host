@@ -89,9 +89,7 @@ pub async fn get_manifest() -> impl IntoResponse {
                                         // Read metadata.json for this run if it exists
                                         let metadata: Option<serde_json::Value> =
                                             std::fs::read_to_string(
-                                                report_path
-                                                    .join(file_name)
-                                                    .join("metadata.json"),
+                                                report_path.join(file_name).join("metadata.json"),
                                             )
                                             .ok()
                                             .and_then(|s| serde_json::from_str(&s).ok());
