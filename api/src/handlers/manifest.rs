@@ -45,26 +45,33 @@ pub async fn get_manifest() -> impl IntoResponse {
                                 continue;
                             }
 
-                            // Skip 'raw' directory, look inside it for reports
-                            if report_name == "raw" {
-                                if let Ok(raw_reports) = std::fs::read_dir(&report_path) {
-                                    for raw_entry in raw_reports.flatten() {
-                                        let _raw_path = raw_entry.path();
-                                        if let Ok(file_name) = raw_entry.file_name().into_string()
-                                            && let Ok(id) = file_name.parse::<u32>()
-                                        {
-                                            let url = format!(
-                                                "/{}/{}/{}/raw/{}/index.html",
-                                                project_name, branch_name, report_name, id
-                                            );
-                                            reports.push(json!({
-                                                "name": format!("{} (Raw)", report_name),
-                                                "id": id,
-                                                "path": url,
-                                                "type": "raw"
-                                            }));
-                                        }
-                                    }
+                            // Raw uploads live inside their report directory:
+                            // <project>/<branch>/<report-name>/raw/<id>/index.html.
+                            // Find the newest raw run so the UI can render a direct report card.
+                            let raw_dir = report_path.join("raw");
+                            if raw_dir.is_dir() {
+                                let latest_raw_id = std::fs::read_dir(&raw_dir)
+                                    .ok()
+                                    .into_iter()
+                                    .flatten()
+                                    .filter_map(Result::ok)
+                                    .filter_map(|entry| {
+                                        let id = entry.file_name().to_str()?.parse::<u32>().ok()?;
+                                        entry.path().join("index.html").is_file().then_some(id)
+                                    })
+                                    .max();
+
+                                if let Some(id) = latest_raw_id {
+                                    let url = format!(
+                                        "/{}/{}/{}/raw/{}/index.html",
+                                        project_name, branch_name, report_name, id
+                                    );
+                                    reports.push(json!({
+                                        "name": report_name,
+                                        "id": id,
+                                        "path": url,
+                                        "type": "raw"
+                                    }));
                                 }
                             } else {
                                 // Collect ALL numeric run directories for this report
