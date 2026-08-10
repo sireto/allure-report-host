@@ -728,6 +728,7 @@
     <script>
         const API_BASE = window.location.origin;
         let projectsData = {};
+        let dashboardInitialized = false;
 
         // SVG icon templates
         const icons = {
@@ -743,6 +744,7 @@
         async function init() {
             await loadProjects();
             updateTimestamp();
+            dashboardInitialized = true;
             restoreDashboardRoute();
         }
 
@@ -985,12 +987,25 @@
             }
         }
 
-        window.addEventListener('popstate', restoreDashboardRoute);
+        function restoreDashboardRouteWhenReady() {
+            if (dashboardInitialized) {
+                restoreDashboardRoute();
+            }
+        }
+
+        // `pageshow` covers Back navigation when the browser restores this page from
+        // its back-forward cache; `hashchange` covers direct hash navigation.
+        window.addEventListener('popstate', restoreDashboardRouteWhenReady);
+        window.addEventListener('hashchange', restoreDashboardRouteWhenReady);
+        window.addEventListener('pageshow', restoreDashboardRouteWhenReady);
 
         // Update timestamp
         function updateTimestamp() {
             const now = new Date().toLocaleString();
-            document.getElementById('lastUpdate').textContent = now;
+            const lastUpdate = document.getElementById('lastUpdate');
+            if (lastUpdate) {
+                lastUpdate.textContent = now;
+            }
         }
 
         // Theme toggle
