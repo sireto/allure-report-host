@@ -37,7 +37,7 @@ pub async fn find_results_dir(dir: &PathBuf) -> PathBuf {
 
         if subdir_count == 1 {
             if let Some(subdir) = single_subdir {
-                println!("Descending into single subfolder: {:?}", &subdir);
+                println!("Descending into single subfolder: {:?}", subdir);
                 current = subdir;
             } else {
                 unreachable!("subdir_count == 1 but single_subdir is None");
