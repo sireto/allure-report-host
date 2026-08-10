@@ -691,7 +691,7 @@
         <!-- Reports View -->
         <div id="reportsView" class="reports-page">
             <div class="reports-header">
-                <button class="back-button" onclick="showProjects()">
+                <button class="back-button" onclick="goBack()">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5"/><path d="m12 19-7-7 7-7"/></svg>
                     Back
                 </button>
@@ -743,6 +743,7 @@
         async function init() {
             await loadProjects();
             updateTimestamp();
+            restoreDashboardRoute();
         }
 
         // Load projects from data directory
@@ -814,7 +815,11 @@
         }
 
         // Show reports for a branch
-        function showReports(project, branch) {
+        function showReports(project, branch, updateHistory = true) {
+            if (updateHistory) {
+                navigateTo(`#/reports/${encodeURIComponent(project)}/${encodeURIComponent(branch)}`);
+            }
+
             const reports = projectsData[project]?.[branch] || [];
             const container = document.getElementById('reportsContainer');
             
@@ -872,7 +877,11 @@
         }
 
         // Show runs for a report
-        function showRuns(project, branch, reportName) {
+        function showRuns(project, branch, reportName, updateHistory = true) {
+            if (updateHistory) {
+                navigateTo(`#/runs/${encodeURIComponent(project)}/${encodeURIComponent(branch)}/${encodeURIComponent(reportName)}`);
+            }
+
             const reports = projectsData[project]?.[branch] || [];
             const report = reports.find(r => r.name === reportName);
             const runs = report?.runs || [];
@@ -885,9 +894,9 @@
             document.getElementById('breadcrumbRunBranch').textContent = branch;
             document.getElementById('breadcrumbRunReport').textContent = reportName;
 
-            // Wire back button to return to reports
+            // Wire back button to return to the prior dashboard view.
             document.getElementById('runsBackButton').onclick = function() {
-                showReports(project, branch);
+                goBack();
             };
 
             if (runs.length === 0) {
@@ -925,11 +934,58 @@
         }
 
         // Show projects view
-        function showProjects() {
+        function showProjects(updateHistory = true) {
+            if (updateHistory) {
+                navigateTo('');
+            }
+
             document.getElementById('projectsView').style.display = 'block';
             document.getElementById('reportsView').classList.remove('active');
             document.getElementById('runsView').classList.remove('active');
         }
+
+        // Dashboard views are stored in the URL hash so a report page can return to
+        // the exact branch/run view that opened it, without colliding with report URLs.
+        function navigateTo(hash) {
+            const url = `${window.location.pathname}${window.location.search}${hash}`;
+            if (`${window.location.pathname}${window.location.search}${window.location.hash}` !== url) {
+                history.pushState({ dashboard: true }, '', url);
+            }
+        }
+
+        function restoreDashboardRoute() {
+            const parts = window.location.hash.replace(/^#\/?/, '').split('/').filter(Boolean);
+
+            try {
+                if (parts[0] === 'reports' && parts.length === 3) {
+                    showReports(decodeURIComponent(parts[1]), decodeURIComponent(parts[2]), false);
+                    return;
+                }
+                if (parts[0] === 'runs' && parts.length === 4) {
+                    showRuns(
+                        decodeURIComponent(parts[1]),
+                        decodeURIComponent(parts[2]),
+                        decodeURIComponent(parts[3]),
+                        false
+                    );
+                    return;
+                }
+            } catch (error) {
+                console.warn('Invalid dashboard route:', error);
+            }
+
+            showProjects(false);
+        }
+
+        function goBack() {
+            if (history.state?.dashboard) {
+                history.back();
+            } else {
+                showProjects();
+            }
+        }
+
+        window.addEventListener('popstate', restoreDashboardRoute);
 
         // Update timestamp
         function updateTimestamp() {
